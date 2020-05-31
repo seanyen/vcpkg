@@ -2,9 +2,9 @@ set(SUITESPARSE_VER 5.4.0)
 set(SUITESPARSEWIN_VER 1.4.0)
 
 vcpkg_download_distfile(SUITESPARSE
-    URLS "http://faculty.cse.tamu.edu/davis/SuiteSparse/SuiteSparse-${SUITESPARSE_VER}.tar.gz"
+    URLS "https://github.com/DrTimothyAldenDavis/SuiteSparse/archive/v${SUITESPARSE_VER}.tar.gz"
     FILENAME "SuiteSparse-${SUITESPARSE_VER}.tar.gz"
-    SHA512 8328bcc2ef5eb03febf91b9c71159f091ff405c1ba7522e53714120fcf857ceab2d2ecf8bf9a2e1fc45e1a934665a341e3a47f954f87b59934f4fce6164775d6
+    SHA512 65065fff86ff31e2ecc706525c3a2240cec7fff67f1bdf5371df7c55b661bd797e2fdbde8952f9ca7b7d8aa39bfcd6b6e0355c3acb59f66069cb0e14cb76701d
 )
 
 vcpkg_extract_source_archive_ex(
