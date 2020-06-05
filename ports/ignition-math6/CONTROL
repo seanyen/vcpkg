@@ -1,0 +1,5 @@
+Source: ignition-math6
+Version: 6.4.0
+Homepage: https://github.com/ignitionrobotics/ign-math
+Description: Ignition math library is a general purpose math library for robot applications.
+Build-Depends: ignition-cmake2, eigen3
