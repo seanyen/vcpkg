@@ -9,7 +9,6 @@ vcpkg_from_github(
 	PATCHES
         fix-find-packages.patch
         fix-build-error.patch
-        fix-cmake-location.patch
 )
 
 vcpkg_configure_cmake(
@@ -25,7 +24,7 @@ vcpkg_configure_cmake(
 )
 
 vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets()
+vcpkg_fixup_cmake_targets(CONFIG_PATH share/${PORT}/cmake)
 vcpkg_copy_pdbs()
 
 # Clean
