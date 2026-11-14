@@ -1,96 +1,67 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO videolan/x265
-    REF 07295ba7ab551bb9c1580fdaee3200f1b45711b7 #v3.4
-    SHA512 21a4ef8733a9011eec8b336106c835fbe04689e3a1b820acb11205e35d2baba8c786d9d8cf5f395e78277f921857e4eb8622cf2ef3597bce952d374f7fe9ec29
+    REPO Multicorewareinc/x265
+    REF "${VERSION}"
+    SHA512 270d0db180ecebfc5c2f1fe6451be66042fab69273d073428f4af00420fa0f8b792ecdc71ec1a15ee2860e3b6a325c56295143f117e94fa3616f0ccecb2ded75
     HEAD_REF master
     PATCHES
         disable-install-pdb.patch
+        version.patch
+        linkage.diff
+        pkgconfig.diff
+        pthread.diff
+        compiler-target.diff
+        neon.diff
+        advapi32.patch # Required since v4.2 as it is now using RegOpenKeyExA, RegQueryValueExA & RegCloseKey
 )
 
-set(ENABLE_ASSEMBLY OFF)
-if (VCPKG_TARGET_IS_WINDOWS)
+vcpkg_check_features(OUT_FEATURE_OPTIONS OPTIONS
+    FEATURES
+        tool   ENABLE_CLI
+)
+
+if(VCPKG_TARGET_ARCHITECTURE STREQUAL "x86" OR VCPKG_TARGET_ARCHITECTURE STREQUAL "x64")
     vcpkg_find_acquire_program(NASM)
-    get_filename_component(NASM_EXE_PATH ${NASM} DIRECTORY)
-    set(ENV{PATH} "$ENV{PATH};${NASM_EXE_PATH}")
-    set(ENABLE_ASSEMBLY ON)
-endif ()
+    list(APPEND OPTIONS "-DNASM_EXECUTABLE=${NASM}")
+    if(VCPKG_LIBRARY_LINKAGE STREQUAL "static" AND NOT VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_OSX)
+        # x265 doesn't create sufficient PIC for asm, breaking usage
+        # in shared libs, e.g. the libheif gdk pixbuf plugin.
+        # Users can override this in custom triplets.
+        list(APPEND OPTIONS "-DENABLE_ASSEMBLY=OFF")
+    endif()
+elseif(VCPKG_TARGET_IS_WINDOWS)
+    list(APPEND OPTIONS "-DENABLE_ASSEMBLY=OFF")
+endif()
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" ENABLE_SHARED)
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}/source
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}/source"
     OPTIONS
-        -DENABLE_ASSEMBLY=${ENABLE_ASSEMBLY}
+        ${OPTIONS}
         -DENABLE_SHARED=${ENABLE_SHARED}
+        -DENABLE_PIC=ON
+        -DENABLE_LIBNUMA=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_VLD=ON
+        "-DVERSION=${VERSION}"
     OPTIONS_DEBUG
         -DENABLE_CLI=OFF
+    MAYBE_UNUSED_VARIABLES
+        ENABLE_LIBNUMA
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_fixup_pkgconfig()
 
-# remove duplicated include files
-if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-    file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-endif()
-vcpkg_copy_tools(TOOL_NAMES x265 AUTO_CLEAN)
-
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static" OR VCPKG_TARGET_IS_LINUX)
-    file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/bin)
+if("tool" IN_LIST FEATURES)
+    vcpkg_copy_tools(TOOL_NAMES x265 AUTO_CLEAN)
 endif()
 
-if(VCPKG_TARGET_IS_WINDOWS AND (NOT VCPKG_TARGET_IS_MINGW))
-    if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-        if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-            vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/x265.pc" "-lx265" "-lx265-static")
-        endif()
-        if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-            vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/x265.pc" "-lx265" "-lx265-static")
-        endif()
-    endif()
+if(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/x265.h" "#ifdef X265_API_IMPORTS" "#if 1")
 endif()
 
-# maybe create vcpkg_regex_replace_string?
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-    file(READ ${CURRENT_PACKAGES_DIR}/lib/pkgconfig/x265.pc _contents)
-    string(REGEX REPLACE "-l(std)?c\\+\\+" "" _contents "${_contents}")
-    file(WRITE ${CURRENT_PACKAGES_DIR}/lib/pkgconfig/x265.pc "${_contents}")
-endif()
-
-if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-    file(READ ${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/x265.pc _contents)
-    string(REGEX REPLACE "-l(std)?c\\+\\+" "" _contents "${_contents}")
-    file(WRITE ${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/x265.pc "${_contents}")
-endif()
-
-if(VCPKG_TARGET_IS_MINGW AND ENABLE_SHARED)
-    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-        file(REMOVE ${CURRENT_PACKAGES_DIR}/debug/lib/libx265.a)
-    endif()
-    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-        file(REMOVE ${CURRENT_PACKAGES_DIR}/lib/libx265.a)
-    endif()
-endif()
-
-if(UNIX)
-    foreach(FILE "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/x265.pc" "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/x265.pc")
-        if(EXISTS "${FILE}")
-            file(READ "${FILE}" _contents)
-            string(REPLACE " -lstdc++" "" _contents "${_contents}")
-            string(REPLACE " -lc++" "" _contents "${_contents}")
-            string(REPLACE " -lgcc_s" "" _contents "${_contents}")
-            string(REPLACE " -lgcc" "" _contents "${_contents}")
-            string(REPLACE " -lrt" "" _contents "${_contents}")
-            file(WRITE "${FILE}" "${_contents}")
-        endif()
-    endforeach()
-    vcpkg_fixup_pkgconfig(SYSTEM_LIBRARIES numa)
-else()
-    vcpkg_fixup_pkgconfig()
-endif()
-
-# Handle copyright
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

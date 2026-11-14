@@ -1,24 +1,24 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO strasdat/Sophus
-    REF v1.0.0
-    SHA512 569634a8be9237d2240cf30c01e2677ece75d55f1196030f1228baca62fa22460e8ceb2a63bd46afdf7f02d8eb79c59d6ed666228b852da78590de897b278fab
-    HEAD_REF master
+    REF 1.24.6
+    SHA512 cbc01e92c8361937194bed320ac84a7cfd8b71ecc3a842d3d3c9796ff52a08d13aa0b4f30184c4c7ddc223da0141a80176382c8b25a328e53fa00c4627511ec3
+    HEAD_REF main
     PATCHES
-        fix_cmakelists.patch
-        disable-werror.patch
+        0001-support-eigen3-5.patch
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS 
+        -DBUILD_SOPHUS_TESTS=OFF
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/Sophus)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH share/sophus/cmake)
+
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/lib)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
 
 file(INSTALL "${SOURCE_PATH}/LICENSE.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)

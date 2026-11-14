@@ -3,23 +3,14 @@ vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO davisking/dlib
-    REF 70ea028f12e10f4d992a0c4f0169749eae5bb185 #v19.22
-    SHA512 f7c5988d6a1b2384a54a3e1a330c50011d3325bb87b4edd9fa08a2f4daeffdcb276ea21bc1d4cfd766b4e4d0a9c13b235e4b6002aa97af5327b833f91b688fd0
+    REF "v${VERSION}"
+    SHA512 5104f12395a48ad2a9c196faab1b92d8ed5aaa026fff67f9a915ffd9a3c132ee2f68ce8b50a3c0bd3138ac4b42435bf6c0c5aa641bfabac47cde39ca465fe2f4
     HEAD_REF master
     PATCHES
-        fix-sqlite3-fftw-linkage.patch
-        force_finding_packages.patch
-        find_blas.patch
+        fix-dependencies.patch
+        fix-flags.patch
 )
-
-file(REMOVE_RECURSE "${SOURCE_PATH}/dlib/external/libjpeg")
-file(REMOVE_RECURSE "${SOURCE_PATH}/dlib/external/libpng")
-file(REMOVE_RECURSE "${SOURCE_PATH}/dlib/external/zlib")
-
-# This fixes static builds; dlib doesn't pull in the needed transitive dependencies
-file(READ "${SOURCE_PATH}/dlib/CMakeLists.txt" DLIB_CMAKE)
-string(REPLACE "PNG_LIBRARY" "PNG_LIBRARIES" DLIB_CMAKE "${DLIB_CMAKE}")
-file(WRITE "${SOURCE_PATH}/dlib/CMakeLists.txt" "${DLIB_CMAKE}")
+file(REMOVE_RECURSE "${SOURCE_PATH}/dlib/external")
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
@@ -28,31 +19,54 @@ vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
         "cuda"      DLIB_USE_CUDA
 )
 
+if (VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64")
+    set(COMMON_OPTIONS -DUSE_SSE2_INSTRUCTIONS=OFF)
+endif()
+
+set(dbg_opts "")
+if(VCPKG_TARGET_IS_WINDOWS)
+  set(dbg_opts -DDLIB_ENABLE_ASSERTS=ON)
+endif()
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         ${FEATURE_OPTIONS}
+        ${COMMON_OPTIONS}
         -DDLIB_PNG_SUPPORT=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_PNG=ON
+        -Dtest_for_libpng_worked=TRUE # try_compile ignores vcpkg setup
         -DDLIB_JPEG_SUPPORT=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_JPEG=ON
+        -Dtest_for_libjpeg_worked=TRUE # try_compile ignores vcpkg setup
         -DDLIB_USE_BLAS=ON
         -DDLIB_USE_LAPACK=ON
         -DDLIB_GIF_SUPPORT=OFF
+        -DDLIB_WEBP_SUPPORT=OFF
         -DDLIB_USE_MKL_FFT=OFF
-        -DCMAKE_DEBUG_POSTFIX=d
+        -DDLIB_USE_FFMPEG=OFF
+        -DDLIB_NO_GUI_SUPPORT=ON
     OPTIONS_DEBUG
-        -DDLIB_ENABLE_ASSERTS=ON
+        ${dbg_opts}
         #-DDLIB_ENABLE_STACK_TRACE=ON
 )
 
 vcpkg_cmake_install()
 
+if(VCPKG_TARGET_IS_WINDOWS)
+  # Dlib encodes debug/release in its config.h. Patch it to respond to the NDEBUG macro instead. <- The below is using _DEBUG but there is no correct way to switch this on !windows
+  # Only windows defines _DEBUG in debug builds.
+  vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/dlib/config.h" "/* #undef ENABLE_ASSERTS */" "#if defined(_DEBUG)\n#define ENABLE_ASSERTS\n#endif")
+  vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/dlib/config.h" "#define DLIB_DISABLE_ASSERTS" "#if !defined(_DEBUG)\n#define DLIB_DISABLE_ASSERTS\n#endif")
+endif()
+
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/dlib)
 
 vcpkg_fixup_pkgconfig()
 
-# There is no way to suppress installation of the headers and resource files in debug build.
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/doc")
 
 # Remove other files not required in package
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/all")
@@ -67,12 +81,8 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_a
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_sse4")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_libjpeg")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_libpng")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_libjxl")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/cmake_utils/test_for_libwebp")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/dlib/external/libpng/arm")
 
-# Dlib encodes debug/release in its config.h. Patch it to respond to the NDEBUG macro instead.
-vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/dlib/config.h" "/* #undef ENABLE_ASSERTS */" "#if defined(_DEBUG)\n#define ENABLE_ASSERTS\n#endif")
-vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/dlib/config.h" "#define DLIB_DISABLE_ASSERTS" "#if !defined(_DEBUG)\n#define DLIB_DISABLE_ASSERTS\n#endif")
-
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/dlib/LICENSE.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/doc")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/dlib/LICENSE.txt")

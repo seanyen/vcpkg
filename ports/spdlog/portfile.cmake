@@ -1,37 +1,49 @@
+vcpkg_download_distfile(SPDLOG_BACKPORT_3541_PATCH
+    URLS https://github.com/gabime/spdlog/commit/1685e694c5cd8328280c48f8b94b1281c17c6fee.patch?full_index=1
+    FILENAME spdlog-backport-3541.patch
+    SHA512 9b5340c93b9a869ae7479395e23672288fc3b4347fc1e9a4535b580a6ade1dadd985e939fb5fbb820d262f0c2153599a88dd572443b62dab3498da8b327ee034
+)
+vcpkg_download_distfile(SPDLOG_BACKPORT_3543_PATCH
+    URLS https://github.com/gabime/spdlog/commit/d5af52d903ed69f96c7350155e94aeff248b31eb.patch?full_index=1
+    FILENAME spdlog-backport-3543.patch
+    SHA512 ada7e63920a48fa1641bf4929b6172c4e8570e2610534caf9fd1a769d00d304b7c5907987420f85989295a939aa1e75cf18c54bbf3ccc6ccad594a24aba2e8b9
+)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO gabime/spdlog
-    REF v1.9.2
-    SHA512 87b12a792cf2d740ef29db4b6055788a487b6d474662b878711b8a5534efea5f0d97b6ac357834500b66cc65e1ba8934446a695e9691fd5d4b95397b6871555c
+    REF "v${VERSION}"
+    SHA512 8df117055d19ff21c9c9951881c7bdf27cc0866ea3a4aa0614b2c3939cedceab94ac9abaa63dc4312b51562b27d708cb2f014c68c603fd1c1051d3ed5c1c3087
     HEAD_REF v1.x
-    PATCHES fix-mingw-build.patch
+    PATCHES
+        "${SPDLOG_BACKPORT_3541_PATCH}"
+        "${SPDLOG_BACKPORT_3543_PATCH}"
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
-        benchmark       SPDLOG_BUILD_BENCH
-        wchar           SPDLOG_WCHAR_SUPPORT
+        benchmark SPDLOG_BUILD_BENCH
+        fmt       SPDLOG_FMT_EXTERNAL
+        wchar     SPDLOG_WCHAR_SUPPORT
+    INVERTED_FEATURES
+        fmt       SPDLOG_USE_STD_FORMAT
+        tz-offset SPDLOG_NO_TZ_OFFSET
 )
 
-# configured in triplet file
+# SPDLOG_WCHAR_FILENAMES can only be configured in triplet file since it is an alternative (not additive)
 if(NOT DEFINED SPDLOG_WCHAR_FILENAMES)
     set(SPDLOG_WCHAR_FILENAMES OFF)
 endif()
-if(NOT VCPKG_TARGET_IS_WINDOWS)
-    if("wchar" IN_LIST FEATURES)
-        message(WARNING "Feature 'wchar' is only supported for Windows and has no effect on other platforms.")
-    elseif(SPDLOG_WCHAR_FILENAMES) 
-        message(FATAL_ERROR "Build option 'SPDLOG_WCHAR_FILENAMES' is for Windows.")
-    endif()
+if(NOT VCPKG_TARGET_IS_WINDOWS AND SPDLOG_WCHAR_FILENAMES)
+    message(FATAL_ERROR "Build option 'SPDLOG_WCHAR_FILENAMES' is for Windows.")
 endif()
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" SPDLOG_BUILD_SHARED)
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         ${FEATURE_OPTIONS}
-        -DSPDLOG_FMT_EXTERNAL=ON
         -DSPDLOG_INSTALL=ON
         -DSPDLOG_BUILD_SHARED=${SPDLOG_BUILD_SHARED}
         -DSPDLOG_WCHAR_FILENAMES=${SPDLOG_WCHAR_FILENAMES}
@@ -43,26 +55,41 @@ vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/spdlog)
 vcpkg_fixup_pkgconfig()
 vcpkg_copy_pdbs()
 
-# use vcpkg-provided fmt library (see also option SPDLOG_FMT_EXTERNAL above)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/include/spdlog/fmt/bundled)
+if(NOT VCPKG_BUILD_TYPE)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/spdlog.pc" " -lspdlog" " -lspdlogd")
+endif()
 
-vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/fmt/fmt.h
-    "#if !defined(SPDLOG_FMT_EXTERNAL)"
-    "#if 0 // !defined(SPDLOG_FMT_EXTERNAL)"
+# add support for integration other than cmake
+if(SPDLOG_FMT_EXTERNAL)
+    vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/tweakme.h
+        "// #define SPDLOG_FMT_EXTERNAL"
+        "#ifndef SPDLOG_FMT_EXTERNAL\n#define SPDLOG_FMT_EXTERNAL\n#endif"
+    )
+endif()
+if(SPDLOG_USE_STD_FORMAT)
+    vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/tweakme.h
+        "// #define SPDLOG_USE_STD_FORMAT"
+	"#ifndef SPDLOG_USE_STD_FORMAT\n#define SPDLOG_USE_STD_FORMAT\n#endif"
+    )
+endif()
+if(SPDLOG_WCHAR_SUPPORT)
+    vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/tweakme.h
+        "// #define SPDLOG_WCHAR_TO_UTF8_SUPPORT"
+        "#ifndef SPDLOG_WCHAR_TO_UTF8_SUPPORT\n#define SPDLOG_WCHAR_TO_UTF8_SUPPORT\n#endif"
+    )
+endif()
+if(SPDLOG_WCHAR_FILENAMES)
+    vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/tweakme.h
+        "// #define SPDLOG_WCHAR_FILENAMES"
+        "#ifndef SPDLOG_WCHAR_FILENAMES\n#define SPDLOG_WCHAR_FILENAMES\n#endif"
+    )
+endif()
+
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/include/spdlog/fmt/bundled"
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
 )
 
-vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/fmt/ostr.h
-    "#if !defined(SPDLOG_FMT_EXTERNAL)"
-    "#if 0 // !defined(SPDLOG_FMT_EXTERNAL)"
-)
-
-vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/spdlog/fmt/chrono.h
-    "#if !defined(SPDLOG_FMT_EXTERNAL)"
-    "#if 0 // !defined(SPDLOG_FMT_EXTERNAL)"
-)
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include
-                    ${CURRENT_PACKAGES_DIR}/debug/share)
-
-# Handle copyright
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

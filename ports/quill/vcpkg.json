@@ -1,12 +1,11 @@
 {
   "name": "quill",
-  "version-semver": "1.6.3",
-  "port-version": 3,
-  "description": "C++14 Asynchronous Low Latency Logging Library",
+  "version": "13.1.0",
+  "description": "Asynchronous Low Latency C++ Logging Library",
   "homepage": "https://github.com/odygrd/quill/",
-  "supports": "!(uwp | android)",
+  "documentation": "https://quillcpp.readthedocs.io/en/latest/",
+  "license": "MIT",
   "dependencies": [
-    "fmt",
     {
       "name": "vcpkg-cmake",
       "host": true

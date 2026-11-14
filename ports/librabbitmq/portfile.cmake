@@ -1,30 +1,39 @@
 vcpkg_from_github(
   OUT_SOURCE_PATH SOURCE_PATH
   REPO alanxz/rabbitmq-c
-  REF d416b8b16d196085106cfe137a0ff6919a9f6752 
-  SHA512 3fc137893fc18509a3e583cc8d40a8e91f219063237b9fd018a65cf14da188914ddba3a031c4bc033a886fed19fc6291d1b28b55458b9163eb6d20425b0474dc
+  REF "v${VERSION}"
+  SHA512 8191b1225b21e67d7ae814e1e35ed779464fe7d55a253501f20199c8360bdf6f65f17d30066451a98b449ec4f239e5e4b3004b07f0b3ed522704ab3f07c3306f
   HEAD_REF master
   PATCHES
-	fix-uwpwarning.patch
+      fix-uwpwarning.patch
+      fix-pkgconfig.patch
+)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+  FEATURES
+    ssl ENABLE_SSL_SUPPORT
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" BUILD_STATIC)
-string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BUILD_SHARED)
 
-vcpkg_configure_cmake(
-  SOURCE_PATH ${SOURCE_PATH}
-  PREFER_NINJA
+vcpkg_cmake_configure(
+  SOURCE_PATH "${SOURCE_PATH}"
   OPTIONS
+    ${FEATURE_OPTIONS}
     -DBUILD_EXAMPLES=OFF
-    -DBUILD_TESTS=OFF
+    -DBUILD_TESTING=OFF
     -DBUILD_TOOLS=OFF
+    -DBUILD_STATIC_LIBS=${BUILD_STATIC}
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/rabbitmq-c TARGET_PATH share/rabbitmq-c)
+vcpkg_cmake_config_fixup(PACKAGE_NAME rabbitmq-c CONFIG_PATH lib/cmake/rabbitmq-c)
+
+vcpkg_fixup_pkgconfig()
 
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include ${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig ${CURRENT_PACKAGES_DIR}/lib/pkgconfig)
-file(INSTALL ${SOURCE_PATH}/LICENSE-MIT DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

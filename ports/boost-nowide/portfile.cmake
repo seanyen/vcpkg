@@ -3,19 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/nowide
-    REF boost-1.77.0
-    SHA512 7af7a33aed8a8e88d8da37db302bb2d560e71dad57e2be23086dfca5260fb7b15ab4513807c566e91b3ebe27b10d58614e967895b922bc408c774550625d15cf
+    REF boost-${VERSION}
+    SHA512 4d4a5fd98ca67269896c6a9a2f1a7ad464e66e39909e075b273e9817e994c57d9b937ecb487b66fe157145d6ca5d6504be777c4bef954abce83a5c23349b0642
     HEAD_REF master
-    PATCHES 001-remove-checks.patch
 )
 
-if(NOT DEFINED CURRENT_HOST_INSTALLED_DIR)
-    message(FATAL_ERROR "boost-nowide requires a newer version of vcpkg in order to build.")
-endif()
-include(${CURRENT_HOST_INSTALLED_DIR}/share/boost-build/boost-modular-build.cmake)
-boost_modular_build(
-    SOURCE_PATH ${SOURCE_PATH}
-    BOOST_CMAKE_FRAGMENT "${CMAKE_CURRENT_LIST_DIR}/b2-options.cmake"
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
 )
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})

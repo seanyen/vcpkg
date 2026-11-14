@@ -1,10 +1,11 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO awslabs/aws-checksums
-    REF 99bb0ad4b89d335d638536694352c45e0d2188f5 # v0.1.11
-    SHA512 cb9c249496fd41fda1efb9330e823d8b965adca6c8f372a50fe97eda821e277780bf9af8f5977102c44121568993cca55edbb750967b41f323e07e06a93c50a8
-    HEAD_REF master
-    PATCHES fix-cmake-target-path.patch
+    REF "v${VERSION}"
+    SHA512 7ff9cd04984dc34d1f71a73b9714fa6708fe24c862a688195ef58393d6725c9fd3a245b83d7bee02cdbcd219c7f9fb0a39605a1233b1a35c4123a699bcd6a2f4
+    HEAD_REF main
+    PATCHES
+        fix-cmake-config.patch
 )
 
 if (VCPKG_CRT_LINKAGE STREQUAL static)
@@ -17,23 +18,28 @@ vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DSTATIC_CRT=${STATIC_CRT_LNK}
-        "-DCMAKE_MODULE_PATH=${CURRENT_INSTALLED_DIR}/share/aws-c-common" # use extra cmake files
+        "-DCMAKE_PREFIX_PATH=${CURRENT_INSTALLED_DIR}/share/aws-c-common/modules" # use extra cmake files
         -DBUILD_TESTING=FALSE
 )
 
 vcpkg_cmake_install()
 
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/aws-checksums/cmake)
+string(REPLACE "dynamic" "shared" subdir "${VCPKG_LIBRARY_LINKAGE}")
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}/${subdir}" DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/${PORT}/${PORT}-config.cmake" [[/${type}/]] "/")
 
 file(REMOVE_RECURSE
-	"${CURRENT_PACKAGES_DIR}/debug/include"
-	"${CURRENT_PACKAGES_DIR}/debug/lib/aws-checksums"
-	"${CURRENT_PACKAGES_DIR}/lib/aws-checksums"
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/lib/${PORT}"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+    "${CURRENT_PACKAGES_DIR}/lib/${PORT}"
 )
 
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(
+    FILE_LIST
+        "${SOURCE_PATH}/LICENSE"
+        "${SOURCE_PATH}/source/external/xxhash.h"
+)

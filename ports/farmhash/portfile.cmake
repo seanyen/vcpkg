@@ -2,9 +2,9 @@
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY) 
 
 vcpkg_download_distfile(WIN_PR_PATCH
-    URLS "https://github.com/google/farmhash/pull/40.diff"
+    URLS "https://github.com/google/farmhash/pull/40.diff?full_index=1"
     FILENAME farmhash-pr-40.patch
-    SHA512 265f5c15c17da2b88c82e6016a181abe73d2d94492cdb0cba892acf67a9d40815d54fa81e07351254fe2a39aea143b125924db0e7df14aac84a7469a78612cbd
+    SHA512 a479450e3e2c4810ef67bb0704c30c2779e12a8768524f179235fae8687d064e62ee225b4b167a30fda59c39de40587629813804f452841badf308e1e76607a7
 )
 
 vcpkg_from_github(
@@ -20,11 +20,11 @@ if((VCPKG_TARGET_IS_LINUX OR VCPKG_TARGET_IS_OSX) AND NOT ENV{CXX_FLAGS}) # This
     set(ENV{CXXFLAGS} "-maes -msse4.2")
 endif()
 file(REMOVE_RECURSE "${SOURCE_PATH}/configure")
-vcpkg_configure_make(
-    AUTOCONFIG
+vcpkg_make_configure(
+    AUTORECONF
     SOURCE_PATH ${SOURCE_PATH}
 )
-vcpkg_install_make()
+vcpkg_make_install()
 vcpkg_copy_pdbs()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include"
@@ -35,3 +35,5 @@ file(INSTALL "${SOURCE_PATH}/COPYING"
      DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/farmhashConfig.cmake" 
      DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

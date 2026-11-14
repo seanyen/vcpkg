@@ -1,31 +1,55 @@
-vcpkg_fail_port_install(ON_TARGET "osx")
-
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_check_linkage(ONLY_STATIC_LIBRARY) # incomplete DLL exports
+endif()
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ArtifexSoftware/mupdf
-    REF 61b63d734a7b9df618f6b45dda2466aed442f7f0 # 1.19.0-rc2
-    SHA512 16661c012e18ac72b24c46caf5c02515c29a05e0a8dcf95076eff3a1f2e87c225245037480ed37068858fe6e04ff4a404f69877599b208ab9265d054ec117820
+    REF "${VERSION}"
+    SHA512 b09fd538670fd22e008238b8bfe056960ac60cb018f69bd2119c2a8eff4159d3239bca82f10f5620489a619113ed209f10160fd6090ebdb64bf3f2fd717d119e
     HEAD_REF master
-    PATCHES
-        dont-generate-extract-3rd-party-things.patch
-        use-if-instead-of-ifdef-in-writer.patch
+)
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/unofficial-libmupdf-config.cmake.in" DESTINATION "${SOURCE_PATH}")
+
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS OPTIONS
+    FEATURES
+        ocr ENABLE_OCR
 )
 
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+if(VCPKG_CROSSCOMPILING AND VCPKG_HOST_IS_WINDOWS AND VCPKG_TARGET_IS_WINDOWS)
+    list(APPEND OPTIONS "-DBIN2COFF_EXECUTABLE=${CURRENT_HOST_INSTALLED_DIR}/manual-tools/${PORT}/bin2coff.exe")
+endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    DISABLE_PARALLEL_CONFIGURE
     OPTIONS
-        -DBUILD_EXAMPLES=OFF
+        ${OPTIONS}
 )
-
 vcpkg_cmake_install()
-
-file(COPY "${SOURCE_PATH}/include/mupdf" DESTINATION "${CURRENT_PACKAGES_DIR}/include")
-
 vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(PACKAGE_NAME "unofficial-libmupdf")
 
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/manual-tools")
+
+set(font_licenses "")
+foreach(item IN ITEMS urw/OFL.txt noto/COPYING han/LICENSE.txt droid/NOTICE sil/OFL.txt)
+    string(REPLACE "/" " " new_name "# Fonts - ${item}")
+    set(file "${CURRENT_BUILDTREES_DIR}/${new_name}")
+    file(COPY_FILE "${SOURCE_PATH}/resources/fonts/${item}" "${file}")
+    list(APPEND font_licenses "${file}")
+endforeach()
+
+vcpkg_install_copyright(
+    # Cf. source/fitz/noto.c
+    COMMENT [[
+This software includes Base 14 PDF fonts from URW, Noto fonts from Google.
+Source Han Serif from Adobe for CJK, DroidSansFallback from Android for CJK,
+Charis SIL from SIL.
+]]
+    FILE_LIST
+        "${SOURCE_PATH}/COPYING"
+        ${font_licenses}
+)

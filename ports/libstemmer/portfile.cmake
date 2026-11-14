@@ -1,24 +1,24 @@
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+string(SUBSTRING "${VERSION}" 5 -1 VERSION)
 
 vcpkg_download_distfile(ARCHIVE
-    URLS "http://snowball.tartarus.org/dist/libstemmer_c.tgz"
-    FILENAME "libstemmer_c.tgz"
-    SHA512 9ab5b8bfd5b4071dbbd63d769e09fae3971b49ee441ad970aa95d90b3297f5ffc9deed1613d99974d1485bf3b69292663591957f52bbeddcadbf9d9a4af432f2
+    URLS "https://snowballstem.org/dist/libstemmer_c-${VERSION}.tar.gz"
+    FILENAME "libstemmer_c-${VERSION}.tar.gz"
+    SHA512 6b76a94fd5bdb557c041c937bdfc1887927346a87c987fe3b964a7286e176543b578729e9d7ed97b521faee0d8b484df1aa9be23522b191a87f3a65dc12c5f15
 )
 
-vcpkg_extract_source_archive_ex(
-    OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE}
+vcpkg_extract_source_archive(
+    SOURCE_PATH
+    ARCHIVE "${ARCHIVE}"
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS_DEBUG -DDISABLE_INSTALL_HEADERS=ON
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-file(INSTALL ${CMAKE_CURRENT_LIST_DIR}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/libstemmer RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

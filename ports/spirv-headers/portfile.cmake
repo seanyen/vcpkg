@@ -2,13 +2,20 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KhronosGroup/SPIRV-Headers
-    REF bcf55210f13a4fa3c3d0963b509ff1070e434c79
-    SHA512 d0553b95f28b77209862059cd0a8c15ca3340f33e13d9bb75340ced07a5aa07b8b9eaa1bdc42daa0dbf78679c3b1ef3d344c73b17518061249cdc67000568c37
+    REF "vulkan-sdk-${VERSION}"
+    SHA512 a07ba9e90d38069056e2ca309d439588d25495bde83bc195b391e7879c8e82c9e272e4350291c7389a19904f07aa84581668e9d40299b673ab0d3243cdc5b037
     HEAD_REF master
 )
 
-# This must be spirv as other spirv packages expect it there.
-file(COPY "${SOURCE_PATH}/include/spirv/" DESTINATION "${CURRENT_PACKAGES_DIR}/include/spirv")
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DSPIRV_HEADERS_ENABLE_TESTS=OFF
+)
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
 
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_cmake_config_fixup(CONFIG_PATH "share/cmake/SPIRV-Headers")
+vcpkg_fixup_pkgconfig()
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

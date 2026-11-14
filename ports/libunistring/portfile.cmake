@@ -1,37 +1,62 @@
-set(LIBUNISTRING_VERSION 0.9.10)
-set(LIBUNISTRING_FILENAME libunistring-${LIBUNISTRING_VERSION}.tar.gz)
-
-if(NOT VCPKG_TARGET_IS_MINGW)
-    vcpkg_fail_port_install(ON_TARGET "Windows" "UWP")
-endif()
+set(LIBUNISTRING_FILENAME "libunistring-${VERSION}.tar.xz")
 
 vcpkg_download_distfile(ARCHIVE
     URLS
-        "https://ftp.gnu.org/gnu/libunistring/${LIBUNISTRING_FILENAME}"
         "https://www.mirrorservice.org/sites/ftp.gnu.org/gnu/libunistring/${LIBUNISTRING_FILENAME}"
+        "https://ftp.gnu.org/gnu/libunistring/${LIBUNISTRING_FILENAME}"
     FILENAME "${LIBUNISTRING_FILENAME}"
-    SHA512 690082732fbbd47ab4ffbd6f21d85afece0f8e2ded24982f949f4ae52bf0a981b75ea9bc14ab289e0954cde07f31a7a4c2bb65615a8eb5b2bfa65720310b6fc9
+    SHA512 5fbb5a0a864db73a6d18cdea7b31237da907fff0ef288f3a8db6ebdba8ef61ad8855e5fc780c2bbf632218d8fa59dd119734e5937ca64dc77f53f30f13b80b17
 )
 
-vcpkg_extract_source_archive_ex(
-    OUT_SOURCE_PATH SOURCE_PATH
+if(VCPKG_TARGET_IS_WINDOWS)
+    list(APPEND OPTIONS
+        # On windows during configure tests iconv is properly linked,
+        # but iconv-2.dll missing from the directory where check program is built
+        # causes one of the tests to fail and in result builds libunistring
+        # without iconv support, this flag allows to bypass the test.
+        #
+        # The failing test is "checking for working iconv", while in previous
+        # test "checking for iconv", configure only checks linking, in
+        # "checking for working iconv" it also runs resulting test application.
+        am_cv_func_iconv_works=yes
+    )
+endif()
+
+vcpkg_extract_source_archive(SOURCE_PATH
     ARCHIVE "${ARCHIVE}"
-    REF ${LIBUNISTRING_VERSION}
-    PATCHES fix-for-automake-1.16.4.patch # automake 1.16.4 uses m4_ifset instead of m4_ifdef
+    SOURCE_BASE "v${VERSION}"
+    PATCHES
+        disable-gnulib-fetch.patch
+        disable-subdirs.patch
+        parallelize-symbol-collection.patch
+        msvc-use-stdint.patch
 )
+
+# When targeting a MinGW toolchain, the quotes around the version string passed to windres on the
+# command line get eaten by some level of shell interpolation which breaks the resource files, so
+# we patch the version directly into the resource files ourselves.
+vcpkg_replace_string("${SOURCE_PATH}/lib/libunistring.rc" "PACKAGE_VERSION_STRING" "\"${VERSION}\"")
 
 vcpkg_configure_make(
     SOURCE_PATH "${SOURCE_PATH}"
     AUTOCONFIG
-    COPY_SOURCE
+    USE_WRAPPERS
+    OPTIONS
+        ${OPTIONS}
     OPTIONS
         "--with-libiconv-prefix=${CURRENT_INSTALLED_DIR}"
 )
+
 vcpkg_install_make()
 vcpkg_fixup_pkgconfig()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-# copyright excerpt from README, to cover dual license under "LGPLv3+ or GPLv2".
-file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/copyright" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
-file(INSTALL "${SOURCE_PATH}/COPYING.LIB" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(
+    COMMENT [[
+The libunistring library and its header files are dual-licensed under
+"the GNU LGPLv3+ or the GNU GPLv2+".
+]]
+    FILE_LIST
+        "${SOURCE_PATH}/COPYING.LIB"
+        "${SOURCE_PATH}/COPYING"
+)

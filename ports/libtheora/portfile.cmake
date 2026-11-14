@@ -1,16 +1,14 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO xiph/theora
-    REF fa5707d68c2a4338d58aa8b6afc95539ba89fecb
-    SHA512 e33da23a17e93709dfe4421b512cedbd9aab0d706f5650e0436f9c8e1cde76b902c3338d46750bb86d83e1bceb111ee84e90df36fb59b5c2e7f7aee1610752b2
+    REF "v${VERSION}"
+    SHA512 b2aac15528f0ef8258c0902e33e8211e8858c3c7e6e9eeb708cce5922de5f0e412255ddaf540a50c0ebf601df6c4376fd24a0bdd7f8de4432c4ae6e5d6ffe2b6
     HEAD_REF master
-    PATCHES
-        0001-fix-uwp.patch
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/libtheora.def DESTINATION ${SOURCE_PATH})
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/unofficial-theora-config.cmake.in DESTINATION ${SOURCE_PATH})
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/libtheora.def" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/unofficial-theora-config.cmake.in" DESTINATION "${SOURCE_PATH}")
 
 if(VCPKG_TARGET_ARCHITECTURE STREQUAL "x86")
     set(THEORA_X86_OPT ON)
@@ -18,18 +16,18 @@ else()
     set(THEORA_X86_OPT OFF)
 endif()
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
+        "-DVERSION:STRING=${VERSION}"
         -DUSE_X86=${THEORA_X86_OPT}
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/unofficial-theora" PACKAGE_NAME "unofficial-theora")
+vcpkg_fixup_pkgconfig()
 vcpkg_copy_pdbs()
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/unofficial-theora TARGET_PATH share/unofficial-theora)
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(COPY ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/libtheora)
-file(RENAME ${CURRENT_PACKAGES_DIR}/share/libtheora/LICENSE ${CURRENT_PACKAGES_DIR}/share/libtheora/copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING" "${SOURCE_PATH}/LICENSE")

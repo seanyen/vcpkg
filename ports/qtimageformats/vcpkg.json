@@ -1,8 +1,9 @@
 {
   "name": "qtimageformats",
-  "version-semver": "6.2.2",
-  "description": "Additional Image Format plugins for Qt",
-  "homepage": "https://www.qt.io/",
+  "version": "6.11.3",
+  "description": "The Qt Image Formats add-on module provides optional support for other image file formats.",
+  "homepage": "https://www.qt.io",
+  "license": null,
   "dependencies": [
     {
       "name": "qtbase",
@@ -13,15 +14,11 @@
     }
   ],
   "default-features": [
-    "default-features",
     "jasper",
     "tiff",
     "webp"
   ],
   "features": {
-    "default-features": {
-      "description": "Platform-dependent default features"
-    },
     "jasper": {
       "description": "Use jasper",
       "dependencies": [
@@ -31,7 +28,10 @@
     "tiff": {
       "description": "Use TIFF",
       "dependencies": [
-        "tiff"
+        {
+          "name": "tiff",
+          "default-features": false
+        }
       ]
     },
     "webp": {

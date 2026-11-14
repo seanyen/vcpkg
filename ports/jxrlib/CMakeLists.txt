@@ -18,9 +18,15 @@ macro(JXR_MAKE_OBJ SET_NAME)
   endforeach()
 endmacro()
 
-if(NOT MSVC)
+if(NOT WIN32)
   add_definitions(-D__ANSI__)
-  add_compile_options(-Wno-error=implicit-function-declaration)
+endif()
+if(NOT MSVC)
+  add_compile_options(
+    -Wno-error=implicit-function-declaration
+    -Wno-endif-labels
+    -Wno-incompatible-pointer-types             # https://gcc.gnu.org/gcc-14/porting_to.html#incompatible-pointer-types
+  )
 endif()
 
 include(TestBigEndian)
@@ -58,7 +64,7 @@ include_directories(
 
 
 # JPEG-XR
-set(SRC_SYS adapthuff.c image.c strcodec.c strPredQuant.c strTransform.c perfTimerANSI.c)
+set(SRC_SYS adapthuff.c image.c strcodec.c strPredQuant.c strTransform.c perfTimerANSI.c memory_lim.c)
 JXR_MAKE_OBJ(SYS)
 set(SRC_DEC decode.c postprocess.c segdec.c strdec.c strInvTransform.c strPredQuantDec.c JXRTranscode.c)
 JXR_MAKE_OBJ(DEC)
@@ -98,7 +104,7 @@ install(TARGETS jxrglue
 target_link_libraries(jxrglue jpegxr)
 
 # install rules
-install(FILES jxrgluelib/JXRGlue.h jxrgluelib/JXRMeta.h jxrtestlib/JXRTest.h
+install(FILES jxrgluelib/JXRGlue.h jxrgluelib/JXRMeta.h jxrgluelib/JXRVersion.h jxrtestlib/JXRTest.h
   image/sys/windowsmediaphoto.h
   DESTINATION ${JXRLIB_INSTALL_INCLUDE_DIR} COMPONENT Headers
 )

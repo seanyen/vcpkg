@@ -1,82 +1,73 @@
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO CGNS/CGNS
-    REF 86b686bce292eef7782cfb56b6acdb5123c96f49 # v4.2.0
-    SHA512 88df741acc1b650724bcbeb82ab0f7e593bf01e0a30c04b14b9915f4ea4331725cc24b87715dd08d93d5a3708660ca7f7874bc0a9c5505b76471802cf033e35d
+    REF "v${VERSION}"
+    SHA512 f0a3f82824d81e2db4c992fc41e91c53158898fbf0b342c0c857e5e3f02d081df3822035b9eb558fe12c48ce36e4123810adc11f9b85e60e76e7de7f35a56162
     HEAD_REF develop
     PATCHES
         hdf5.patch
+        install-lib-linkage.diff
         linux_lfs.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
    FEATURES
-     fortran CGNS_ENABLE_FORTRAN
-     tests   CGNS_ENABLE_TESTS
-     hdf5    CGNS_ENABLE_HDF5
-     lfs     CGNS_ENABLE_LFS
-     legacy  CGNS_ENABLE_LEGACY
+     "fortran"      CGNS_ENABLE_FORTRAN
+     "hdf5"         CGNS_ENABLE_HDF5
+     "lfs"          CGNS_ENABLE_LFS
+     "legacy"       CGNS_ENABLE_LEGACY
+     "tests"        CGNS_ENABLE_TESTS
 )
 
-if(VCPKG_TARGET_ARCHITECTURE MATCHES "64")
-    list(APPEND CGNS_BUILD_OPTS "-DCGNS_ENABLE_64BIT=ON")
-endif()
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" CGNS_BUILD_SHARED)
 
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
-    list(APPEND CGNS_BUILD_OPTS "-DCGNS_BUILD_SHARED=ON;-DCGNS_USE_SHARED=ON")
-else()
-    list(APPEND CGNS_BUILD_OPTS "-DCGNS_BUILD_SHARED=OFF;-DCGNS_USE_SHARED=OFF")
-endif()
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA # Disable this option if project cannot be built with Ninja
-    OPTIONS 
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
         ${FEATURE_OPTIONS}
-        ${CGNS_BUILD_OPTS}
+        -DCGNS_BUILD_SHARED=${CGNS_BUILD_SHARED}
+        -DCGNS_ENABLE_SCOPING:BOOL=ON
+    OPTIONS_RELEASE
+        -DCMAKE_TRY_COMPILE_CONFIGURATION=Release
+    OPTIONS_DEBUG
+        -DCMAKE_TRY_COMPILE_CONFIGURATION=Debug
 )
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/cgns")
 
-vcpkg_install_cmake()
-
-file(INSTALL ${CURRENT_PACKAGES_DIR}/include/cgnsBuild.defs DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
-file(REMOVE ${CURRENT_PACKAGES_DIR}/include/cgnsBuild.defs ${CURRENT_PACKAGES_DIR}/include/cgnsconfig.h)
-
-file(INSTALL ${CURRENT_PORT_DIR}/cgnsconfig.h DESTINATION ${CURRENT_PACKAGES_DIR}/include) # the include is all that is needed
-
-set(TOOLS cgnscheck cgnscompress cgnsconvert cgnsdiff cgnslist cgnsnames)
-
-foreach(tool ${TOOLS})
-    set(suffix ${VCPKG_TARGET_EXECUTABLE_SUFFIX})
-    if(EXISTS "${CURRENT_PACKAGES_DIR}/debug/bin/${tool}${suffix}")
-        file(REMOVE "${CURRENT_PACKAGES_DIR}/debug/bin/${tool}${suffix}")
-    endif()
-    if(EXISTS "${CURRENT_PACKAGES_DIR}/bin/${tool}${suffix}")
-        file(INSTALL "${CURRENT_PACKAGES_DIR}/bin/${tool}${suffix}"
-                     DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
-        file(REMOVE "${CURRENT_PACKAGES_DIR}/bin/${tool}${suffix}")
-    endif()
+set(TOOLS "cgnsupdate")
+if("hdf5" IN_LIST FEATURES)
+    list(APPEND TOOLS "adf2hdf" "hdf2adf")
+endif()
+if(VCPKG_TARGET_IS_WINDOWS)
+    list(TRANSFORM TOOLS APPEND ".bat")
+endif()
+foreach(TOOL IN LISTS TOOLS)
+    file(INSTALL "${CURRENT_PACKAGES_DIR}/bin/${TOOL}" DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+    file(REMOVE "${CURRENT_PACKAGES_DIR}/bin/${TOOL}" "${CURRENT_PACKAGES_DIR}/debug/bin/${TOOL}")
 endforeach()
 
-vcpkg_copy_tool_dependencies(${CURRENT_PACKAGES_DIR}/tools/${PORT})
+vcpkg_copy_tools(
+    TOOL_NAMES
+        cgnscheck
+        cgnscompress
+        cgnsconvert
+        cgnsdiff
+        cgnslist
+        cgnsnames
+    AUTO_CLEAN
+)
 
-IF(EXISTS ${CURRENT_PACKAGES_DIR}/debug) 
-    file(REMOVE ${CURRENT_PACKAGES_DIR}/debug/include/cgnsBuild.defs ${CURRENT_PACKAGES_DIR}/debug/include/cgnsconfig.h)
+file(REMOVE "${CURRENT_PACKAGES_DIR}/include/cgnsBuild.defs" "${CURRENT_PACKAGES_DIR}/include/cgnsconfig.h")
+file(INSTALL "${CURRENT_PORT_DIR}/cgnsconfig.h" DESTINATION "${CURRENT_PACKAGES_DIR}/include") # the include is all that is needed
+
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/cgnslib.h" "defined(USE_DLL)" "1")
 endif()
 
-file(REMOVE ${CURRENT_PACKAGES_DIR}/include/cgnsBuild.defs ${CURRENT_PACKAGES_DIR}/include/cgnsconfig.h)
-file(GLOB_RECURSE BATCH_FILES ${CURRENT_PACKAGES_DIR}/bin/*.bat)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-vcpkg_copy_tool_dependencies(${CURRENT_PACKAGES_DIR}/tools/${PORT})
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-    file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/bin ${CURRENT_PACKAGES_DIR}/debug/bin)
-endif()
-
-# # Moves all .cmake files from /debug/share/cgns/ to /share/cgns/
-# # See /docs/maintainers/vcpkg_fixup_cmake_targets.md for more details
-# vcpkg_fixup_cmake_targets(CONFIG_PATH cmake TARGET_PATH share/cgns)
-
-# # Handle copyright
-file(INSTALL ${SOURCE_PATH}/license.txt DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/license.txt")

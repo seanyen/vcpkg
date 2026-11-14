@@ -1,13 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/ktextwidgets
-    REF v5.88.0
-    SHA512 7851ce4c8df4020633b79d4cd83a9a0b94094474f4b65a5c372b8825ea936166577c3e23bcef995c25f7b999822f83131ecfae104f9506fe4109fdedb3e285ce
+    REF "v${VERSION}"
+    SHA512 9107a070d7d12442c5aa0e0432b114d9c0b0d43e8a268b1254468e777de62f895afa1775adb79d75bd1116723f5518ea52f9a035c5cbd2930ce630805c537497
     HEAD_REF master
 )
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -17,7 +17,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5TextWidgets CONFIG_PATH lib/cmake/KF5TextWidgets)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5TextWidgets)
 vcpkg_copy_pdbs()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
@@ -27,5 +27,5 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
-
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

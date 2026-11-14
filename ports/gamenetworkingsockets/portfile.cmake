@@ -1,32 +1,53 @@
-vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ValveSoftware/GameNetworkingSockets
-    REF 9875f39ad3fae8c913daa310c7ff0a7a54b1e6c2 # v1.3.0
-    SHA512 edf814ef10a11b67045d90d589a3bd6471fa46bc3f16cf1e83d1806df6bb48306dcda4096a2ff80fee78b24ce36d164cd46808680c9f5f8f546455fce7bf9aa0
+    REF "v${VERSION}"
+    SHA512 b044010aad017804e1b16b5664431e56f59feb35284adaedfd35f518251e8d8abeb3a29d3d273dea57bde63af63b4b3dd54d2cb2712d28975373b54b640da611
     HEAD_REF master
 )
 
-set(CRYPTO_BACKEND OpenSSL)
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
-    OPTIONS
-        -DGAMENETWORKINGSOCKETS_BUILD_TESTS=OFF
-        -DGAMENETWORKINGSOCKETS_BUILD_EXAMPLES=OFF
-        -DUSE_CRYPTO=${CRYPTO_BACKEND}
-        -DUSE_CRYPTO25519=${CRYPTO_BACKEND}
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        ice             ENABLE_ICE
 )
 
-vcpkg_install_cmake()
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+# Select static vs dynamic based on the triplet.
+if("${VCPKG_LIBRARY_LINKAGE}" STREQUAL "dynamic")
+    set(BUILD_SHARED_LIB ON)
+    set(BUILD_STATIC_LIB OFF)
+else()
+    set(BUILD_SHARED_LIB OFF)
+    set(BUILD_STATIC_LIB ON)
+endif()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH "lib/cmake/GameNetworkingSockets" TARGET_PATH "share/GameNetworkingSockets")
+# Link the MSVC CRT statically when the CRT linkage is static.
+# Not used on non-MSVC platforms; listed in MAYBE_UNUSED_VARIABLES accordingly.
+string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "static" MSVC_CRT_STATIC)
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DUSE_CRYPTO=OpenSSL
+        -DBUILD_STATIC_LIB=${BUILD_STATIC_LIB}
+        -DBUILD_SHARED_LIB=${BUILD_SHARED_LIB}
+        -DMSVC_CRT_STATIC=${MSVC_CRT_STATIC}
+        -DBUILD_TESTS=OFF
+        -DBUILD_EXAMPLES=OFF
+        -DBUILD_TOOLS=OFF
+        ${FEATURE_OPTIONS}
+    MAYBE_UNUSED_VARIABLES
+        MSVC_CRT_STATIC
+)
+
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/GameNetworkingSockets")
 vcpkg_fixup_pkgconfig()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+)
 
 vcpkg_copy_pdbs()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

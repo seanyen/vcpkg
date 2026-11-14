@@ -1,90 +1,117 @@
-set(COLMAP_REF "3.6")
+# Update all three, literally.
+set(COLMAP_REF 4.1.1 "a0d785fba74b2664f31edc4a29026a8b27c00f67" "2026-07-17")
+
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO colmap/colmap
-    REF ${COLMAP_REF}
-    SHA512 9a4b4f2a49891ce8ac32ab1f2e9b859336326bada889e6de49c017a069884bb6c8ab8a2ae430d955e58fc22377c63e8fba9ce80ff959713e2878e29814d44632
-    HEAD_REF dev
-    PATCHES fix-dependency-freeimage.patch
+    REF "${VERSION}"
+    SHA512 0e0da65dfe422872ce0802e062226b38f36e6276f293156f7c16fe106eef785bab5816fb63b4c0a61ccd5b0a5848b19f7efbe8283bd0fa6acd941c70e4e643d1
+    HEAD_REF main
+    PATCHES
+        no-glu.diff
+        fix-dependencies.patch
 )
+file(REMOVE "${SOURCE_PATH}/cmake/FindCryptoPP.cmake")
 
-if (NOT TRIPLET_SYSTEM_ARCH STREQUAL "x64" AND ("cuda" IN_LIST FEATURES OR "cuda-redist" IN_LIST FEATURES))
-    message(FATAL_ERROR "Feature cuda and cuda-redist require x64 triplet.")
+if(NOT VCPKG_TARGET_ARCHITECTURE STREQUAL "x64" AND ("cuda" IN_LIST FEATURES OR "cuda-redist" IN_LIST FEATURES))
+    message(FATAL_ERROR "Features cuda and cuda-redist require an x64 triplet.")
 endif()
 
-# set GIT_COMMIT_ID and GIT_COMMIT_DATE
 if(DEFINED VCPKG_HEAD_VERSION)
     set(GIT_COMMIT_ID "${VCPKG_HEAD_VERSION}")
+    string(TIMESTAMP GIT_COMMIT_DATE "%Y-%m-%d")
+elseif(NOT VERSION IN_LIST COLMAP_REF)
+    message(FATAL_ERROR "Version ${VERSION} missing in COLMAP_REF (${COLMAP_REF})")
 else()
-    set(GIT_COMMIT_ID "${COLMAP_REF}")
+    list(GET COLMAP_REF 1 GIT_COMMIT_ID)
+    list(GET COLMAP_REF 2 GIT_COMMIT_DATE)
 endif()
 
-string(TIMESTAMP COLMAP_GIT_COMMIT_DATE "%Y-%m-%d")
-
 set(CUDA_ENABLED OFF)
-set(TESTS_ENABLED OFF)
 
 if("cuda" IN_LIST FEATURES)
     set(CUDA_ENABLED ON)
+    set(CUDA_ARCHITECTURES "native")
 endif()
 
 if("cuda-redist" IN_LIST FEATURES)
     set(CUDA_ENABLED ON)
-    set(CUDA_ARCHS "Common")
+    set(CUDA_ARCHITECTURES "all-major")
 endif()
 
-if("tests" IN_LIST FEATURES)
-    set(TESTS_ENABLED ON)
-endif()
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
-    OPTIONS
-        -DCUDA_ENABLED=${CUDA_ENABLED}
-        -DCUDA_ARCHS=${CUDA_ARCHS}
-        -DTESTS_ENABLED=${TESTS_ENABLED}
-        -DGIT_COMMIT_ID=${GIT_COMMIT_ID}
-        -DGIT_COMMIT_DATE=${COLMAP_GIT_COMMIT_DATE}
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        cgal      CGAL_ENABLED
+        download  DOWNLOAD_ENABLED
+        gui       GUI_ENABLED
+        onnx      ONNX_ENABLED
 )
 
-vcpkg_install_cmake()
+set(OPENMP_ENABLED ON)
+if(VCPKG_TARGET_IS_OSX AND VCPKG_TARGET_ARCHITECTURE MATCHES "arm")
+    set(OPENMP_ENABLED OFF)
+endif()
 
-vcpkg_fixup_cmake_targets()
+if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
+    string(APPEND VCPKG_C_FLAGS " /bigobj")
+    string(APPEND VCPKG_CXX_FLAGS " /bigobj")
+endif()
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    DISABLE_PARALLEL_CONFIGURE
+    OPTIONS
+        ${FEATURE_OPTIONS}
+        -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}
+        -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
+        -DCUDA_ENABLED=${CUDA_ENABLED}
+        -DFETCH_FAISS=OFF
+        -DFETCH_ONNX=OFF
+        -DFETCH_POSELIB=OFF
+        -DGIT_COMMIT_DATE=${GIT_COMMIT_DATE}
+        -DGIT_COMMIT_ID=${GIT_COMMIT_ID}
+        -DOPENMP_ENABLED=${OPENMP_ENABLED}
+        -DTESTS_ENABLED=OFF
+)
+
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup()
 
 file(GLOB TOOL_FILENAMES "${CURRENT_PACKAGES_DIR}/bin/*")
-foreach(TOOL_FILENAME ${TOOL_FILENAMES})
-    get_filename_component(TEST_TOOL_NAME ${TOOL_FILENAME} NAME_WLE)
+foreach(TOOL_FILENAME IN LISTS TOOL_FILENAMES)
+    get_filename_component(TEST_TOOL_NAME "${TOOL_FILENAME}" NAME_WLE)
     list(APPEND COLMAP_TOOL_NAMES "${TEST_TOOL_NAME}")
 endforeach()
-
 vcpkg_copy_tools(TOOL_NAMES ${COLMAP_TOOL_NAMES} AUTO_CLEAN)
 
-# remove empty folders and unused files
+if(VCPKG_TARGET_IS_WINDOWS AND "onnx" IN_LIST FEATURES AND CUDA_ENABLED
+   AND EXISTS "${CURRENT_INSTALLED_DIR}/bin/onnxruntime.dll")
+    # ONNX Runtime loads these providers dynamically, so applocal cannot discover them.
+    file(COPY
+        "${CURRENT_INSTALLED_DIR}/bin/onnxruntime_providers_shared.dll"
+        "${CURRENT_INSTALLED_DIR}/bin/onnxruntime_providers_cuda.dll"
+        DESTINATION "${CURRENT_PACKAGES_DIR}/tools/${PORT}"
+    )
+    vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+endif()
+
 file(REMOVE_RECURSE
-    ${CURRENT_PACKAGES_DIR}/debug/include
-    ${CURRENT_PACKAGES_DIR}/debug/share
-    ${CURRENT_PACKAGES_DIR}/debug/include/colmap/exe
-    ${CURRENT_PACKAGES_DIR}/debug/include/colmap/lib/Graclus/multilevelLib
-    ${CURRENT_PACKAGES_DIR}/debug/include/colmap/tools
-    ${CURRENT_PACKAGES_DIR}/debug/include/colmap/ui/media
-    ${CURRENT_PACKAGES_DIR}/debug/include/colmap/ui/shaders
-    ${CURRENT_PACKAGES_DIR}/include/colmap/exe
-    ${CURRENT_PACKAGES_DIR}/include/colmap/lib/Graclus/multilevelLib
-    ${CURRENT_PACKAGES_DIR}/include/colmap/tools
-    ${CURRENT_PACKAGES_DIR}/include/colmap/ui/media
-    ${CURRENT_PACKAGES_DIR}/include/colmap/ui/shaders
-    ${CURRENT_PACKAGES_DIR}/COLMAP.bat
-    ${CURRENT_PACKAGES_DIR}/RUN_TESTS.bat
-    ${CURRENT_PACKAGES_DIR}/debug/COLMAP.bat
-    ${CURRENT_PACKAGES_DIR}/debug/RUN_TESTS.bat
-    ${CURRENT_PACKAGES_DIR}/debug/bin
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+    "${CURRENT_PACKAGES_DIR}/include/colmap/exe"
+    "${CURRENT_PACKAGES_DIR}/include/colmap/tools"
+    "${CURRENT_PACKAGES_DIR}/include/colmap/ui/media"
+    "${CURRENT_PACKAGES_DIR}/include/colmap/ui/shaders"
+    "${CURRENT_PACKAGES_DIR}/COLMAP.bat"
+    "${CURRENT_PACKAGES_DIR}/RUN_TESTS.bat"
+    "${CURRENT_PACKAGES_DIR}/debug/COLMAP.bat"
+    "${CURRENT_PACKAGES_DIR}/debug/RUN_TESTS.bat"
+    "${CURRENT_PACKAGES_DIR}/debug/bin"
 )
 
 vcpkg_copy_pdbs()
-
-file(INSTALL     ${SOURCE_PATH}/COPYING.txt
-     DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT}
-     RENAME copyright
-)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING.txt")
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

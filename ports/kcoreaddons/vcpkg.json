@@ -1,0 +1,47 @@
+{
+  "name": "kcoreaddons",
+  "version": "6.31.0",
+  "port-version": 3,
+  "description": "Addons to QtCore",
+  "homepage": "https://invent.kde.org/frameworks/kcoreaddons",
+  "documentation": "https://api.kde.org/kcoreaddons-index.html",
+  "license": "LGPL-2.0-or-later AND LGPL-2.0-only AND LGPL-2.1-or-later AND LGPL-2.1-only AND (LGPL-2.1-only OR LGPL-3.0-only OR LicenseRef-KDE-Accepted-LGPL) AND (LGPL-2.1-only WITH Qt-LGPL-exception-1.1 OR LicenseRef-Qt-Commercial) AND (MPL-1.1 OR GPL-2.0-or-later OR LGPL-2.1-or-later) AND BSD-2-Clause AND CC0-1.0",
+  "dependencies": [
+    "ecm",
+    {
+      "name": "qtbase",
+      "default-features": false
+    },
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "features": {
+    "qml": {
+      "description": "Build the QML plugin",
+      "dependencies": [
+        {
+          "name": "qtdeclarative",
+          "default-features": false
+        }
+      ]
+    },
+    "translations": {
+      "description": "Install translations",
+      "dependencies": [
+        {
+          "name": "qttools",
+          "host": true,
+          "features": [
+            "linguist"
+          ]
+        }
+      ]
+    }
+  }
+}

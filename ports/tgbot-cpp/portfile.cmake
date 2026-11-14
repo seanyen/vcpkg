@@ -1,24 +1,32 @@
 vcpkg_from_github(
-  OUT_SOURCE_PATH SOURCE_PATH
-  REPO reo7sp/tgbot-cpp
-  REF v1.2.1
-  SHA512 b094f9c80dd15b7930b7d7250169b3199d9c84b84826adececa8237111f5ba384ec790dbe969999f362ca2fb35b93950d053777ce5f167007e33c3e4eb133453
-  HEAD_REF master
+    OUT_SOURCE_PATH SOURCE_PATH
+    REPO reo7sp/tgbot-cpp
+    REF "v${VERSION}"
+    SHA512 0ee6b7658894697ccc38fbf0f7d0b0ca80d9af2a86cec5c78cd5501e472fed8d2aa351364bb7d5a4860c73df9916a82879d9fdfd90e7accfe180ef679e1dcdfd
+    HEAD_REF master
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DENABLE_TESTS=OFF
+        -DBUILD_DOCUMENTATION=OFF
+        "-DCMAKE_PROJECT_INCLUDE=${CURRENT_PORT_DIR}/cmake-project-include.cmake"
+        "-DFEATURES=${FEATURES}"
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/TgBot")
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(READ "${CURRENT_PACKAGES_DIR}/share/tgbot-cpp/TgBotConfig.cmake" tgbot_config)
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/tgbot-cpp/TgBotConfig.cmake" "
+include(CMakeFindDependencyMacro)
+find_dependency(Boost COMPONENTS system)
+find_dependency(CURL)
+${tgbot_config}
+")
 
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-  file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/bin ${CURRENT_PACKAGES_DIR}/debug/bin)
-endif()
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-# Handle copyright
-configure_file(${SOURCE_PATH}/LICENSE ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

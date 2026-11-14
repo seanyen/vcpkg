@@ -1,0 +1,17 @@
+{
+  "name": "tree-sitter",
+  "version-semver": "0.27.2",
+  "description": "An incremental parsing system for programming tools.",
+  "homepage": "https://tree-sitter.github.io/tree-sitter/",
+  "license": "MIT AND Unicode-DFS-2016",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

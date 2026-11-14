@@ -1,39 +1,3 @@
-#[===[.md:
-# vcpkg_check_linkage
-
-Asserts the available library and CRT linkage options for the port.
-
-## Usage
-```cmake
-vcpkg_check_linkage(
-    [ONLY_STATIC_LIBRARY | ONLY_DYNAMIC_LIBRARY]
-    [ONLY_STATIC_CRT | ONLY_DYNAMIC_CRT]
-)
-```
-
-## Parameters
-### ONLY_STATIC_LIBRARY
-Indicates that this port can only be built with static library linkage.
-
-Note: If the user requested a dynamic build ONLY_STATIC_LIBRARY will result in a note being printed, not a fatal error.
-
-### ONLY_DYNAMIC_LIBRARY
-Indicates that this port can only be built with dynamic/shared library linkage.
-
-### ONLY_STATIC_CRT
-Indicates that this port can only be built with static CRT linkage.
-
-### ONLY_DYNAMIC_CRT
-Indicates that this port can only be built with dynamic/shared CRT linkage.
-
-## Notes
-This command will either alter the settings for `VCPKG_LIBRARY_LINKAGE` or fail, depending on what was requested by the user versus what the library supports.
-
-## Examples
-
-* [abseil](https://github.com/Microsoft/vcpkg/blob/master/ports/abseil/portfile.cmake)
-#]===]
-
 function(vcpkg_check_linkage)
     cmake_parse_arguments(PARSE_ARGV 0 arg
         "ONLY_STATIC_LIBRARY;ONLY_DYNAMIC_LIBRARY;ONLY_DYNAMIC_CRT;ONLY_STATIC_CRT"
@@ -56,11 +20,22 @@ function(vcpkg_check_linkage)
         message(STATUS "Note: ${PORT} only supports static library linkage. Building static library.")
         set(VCPKG_LIBRARY_LINKAGE static PARENT_SCOPE)
     elseif(arg_ONLY_DYNAMIC_LIBRARY AND "${VCPKG_LIBRARY_LINKAGE}" STREQUAL "static")
-        message(STATUS "Note: ${PORT} only supports dynamic library linkage. Building dynamic library.")
         if("${VCPKG_CRT_LINKAGE}" STREQUAL "static")
-            message(FATAL_ERROR "Refusing to build unexpected dynamic library against the static CRT.
-    If this is desired, please configure your triplet to directly request this configuration.")
+            message(FATAL_ERROR "This port can only build as a dynamic library, but the triplet \
+selects a static library and a static CRT. Building a dynamic library with a static CRT creates \
+conditions many developers find surprising, and for which most ports are unprepared. Therefore, \
+vcpkg fails rather than changing VCPKG_LIBRARY_LINKAGE to dynamic.\
+
+Consider choosing a triplet that sets VCPKG_CRT_LINKAGE to dynamic. For more information, \
+explicitly requesting this configuration in a custom triplet, please see \
+https://learn.microsoft.com/vcpkg/maintainers/functions/vcpkg_check_linkage?WT.mc_id=vcpkg_inproduct_cli#notes \
+
+If you can edit the port calling vcpkg_check_linkage that emits this message, consider adding \
+!(static & staticcrt) to the \"supports\" expression so that this combination can fail early.")
+        else()
+            message(STATUS "Note: ${PORT} only supports dynamic library linkage. Building dynamic library.")
         endif()
+
         set(VCPKG_LIBRARY_LINKAGE dynamic PARENT_SCOPE)
     endif()
 

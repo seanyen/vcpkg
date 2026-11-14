@@ -1,8 +1,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/kxmlgui
-    REF v5.88.0
-    SHA512 ad8cd77de2fdd41cc7a918e8eefed9efd815ca68fc51ba15b222fcb862bff02a29894b241fbab6dea0050d0d93f0ba8aacffb028c4dc72cad96c1c49bdc06355
+    REF "v${VERSION}"
+    SHA512 be36d5f554ce952379518e995570121632c8e1d43d2527b37c94a3cfc6009de05c1d54a8b8e88634da08a2c5112aaab07cbf3e1f4efbd77e3e0db96a9b27a77a
     HEAD_REF master
 )
 
@@ -13,11 +13,11 @@ vcpkg_check_features(
  )
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    OPTIONS 
+    OPTIONS
         -DBUILD_TESTING=OFF
         -DKDE_INSTALL_PLUGINDIR=plugins
         -DKDE_INSTALL_QTPLUGINDIR=plugins
@@ -25,7 +25,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5XmlGui CONFIG_PATH lib/cmake/KF5XmlGui)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5XmlGui)
 vcpkg_copy_pdbs()
 
 if (VCPKG_TARGET_IS_WINDOWS)
@@ -35,11 +35,12 @@ if (VCPKG_TARGET_IS_WINDOWS)
     )
 endif()
 
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")	
-    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")	
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
 endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
 
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

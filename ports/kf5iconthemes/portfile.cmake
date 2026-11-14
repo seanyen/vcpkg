@@ -1,19 +1,19 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/kiconthemes
-    REF v5.88.0
-    SHA512 197fa4bfeabb459e22c7522d5358bf37c0bf5adc7b6a0605e1ef884dee8d1a02df7fb988b0e2d4821e5c889cd4de2c2fe0d9b7da0266f0869f6779edf57aa5be
+    REF "v${VERSION}"
+    SHA512 fa5a6e1b1483578d0892a99bddf2fc966c37614c49d9a9eb19feddb01e1378871495578dc19a33def06c2e71f9a245a7b00eddbadda80b32275e61539d4110a4
     HEAD_REF master
 )
 
 vcpkg_check_features(
-     OUT_FEATURE_OPTIONS FEATURE_OPTIONS
-     FEATURES
-         designerplugin BUILD_DESIGNERPLUGIN
- )
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        designerplugin BUILD_DESIGNERPLUGIN
+)
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -25,7 +25,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5IconThemes CONFIG_PATH lib/cmake/KF5IconThemes)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5IconThemes)
 vcpkg_copy_pdbs()
 
 vcpkg_copy_tools(
@@ -34,10 +34,7 @@ vcpkg_copy_tools(
 )
 
 if(VCPKG_TARGET_IS_OSX)
-    vcpkg_copy_tools(
-        TOOL_NAMES ksvg2icns
-        AUTO_CLEAN
-    )
+    vcpkg_copy_tools(TOOL_NAMES ksvg2icns AUTO_CLEAN)
 endif()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
@@ -46,5 +43,6 @@ endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
 
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

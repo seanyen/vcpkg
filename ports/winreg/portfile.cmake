@@ -1,16 +1,15 @@
 # WinReg - Header-only library
-vcpkg_fail_port_install(ON_TARGET "linux" "osx")
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO GiovanniDicanio/WinReg
-    REF 2594342b7fe6065430bc377961c37d30614cb4ff #v4.1.2
-    SHA512 924cdb77518c3f0843e95cd7e7d4626d4c0c466444cd79fdfa6943975154a54f4eb0d4bd45b8d37d73c650467b1d2728543176688f356c5100d98810e95c9fe8
+    REF "v${VERSION}"
+    SHA512 46b1b04cbcd39e25e4c704f9059ecf1c13f54de48cacc5639c3634ee37e3cf1b91abf1586b6d3115163f46b0ce82f115c7e708b9cee164d707a0f4df8e67226f
     HEAD_REF master
 )
 
-# Copy the single reusable library header
-file(COPY "${SOURCE_PATH}/WinReg/WinReg.hpp" DESTINATION "${CURRENT_PACKAGES_DIR}/include/${PORT}")
+# Copy the library headers
+file(COPY "${SOURCE_PATH}/Include/WinReg" DESTINATION "${CURRENT_PACKAGES_DIR}/include")
 
 # Handle copyright
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

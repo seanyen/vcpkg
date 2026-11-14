@@ -1,19 +1,11 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
-if(VCPKG_TARGET_IS_WINDOWS)
-    vcpkg_fail_port_install(ON_ARCH "x86") # see https://github.com/alembic/alembic/issues/372
-endif()
-
 vcpkg_buildpath_length_warning(37)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO alembic/alembic
-    REF 1.8.3
-    SHA512 0049c72d93e66e12d704d27e7ba36cd9c718667f2ce4f7baa1bee1613ed88ba53abea98f457e14f7f2144cb353810a4108d26c7dd1a1543ec2af576272f19036
+    REF "${VERSION}"
+    SHA512 88e3f2adec67fa844655b612345df6be7e9734710525d82bbe927d8e159906a086baed4293bc612b91868e9de6f4e5355948d4ceab642ce0ce4de3fa6ca143bf
     HEAD_REF master
-    PATCHES
-        fix-runtime-destination.patch
-        disable-warnings-as-error.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" ALEMBIC_SHARED_LIBS)
@@ -29,6 +21,7 @@ vcpkg_cmake_configure(
         -DALEMBIC_SHARED_LIBS=${ALEMBIC_SHARED_LIBS}
         -DUSE_TESTS=OFF
         ${FEATURE_OPTIONS}
+        -DALEMBIC_DEBUG_WARNINGS_AS_ERRORS=OFF
 )
 
 vcpkg_cmake_install()
@@ -51,4 +44,4 @@ vcpkg_copy_tools(
 )
 vcpkg_copy_tool_dependencies("${CURRENT_PACKAGES_DIR}/tools/${PORT}")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")

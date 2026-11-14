@@ -1,13 +1,27 @@
+# header-only library
+set(VCPKG_BUILD_TYPE release)
+
+string(REGEX REPLACE "^([0-9]+)\\.([0-9])$" "\\1.0\\2" VERSION "${VERSION}")
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO cnr-isti-vclab/vcglib
-    REF v1.0.1
-    SHA512 55d1854054744abae2d41e7b5041df89253bae108df5fc1cfe777013de7192dce04bc474475cb11a1d0343ebcab1ea61b381d9d9c36c452528043e85e75bc211
-    PATCHES consume-vcpkg-eigen3.patch
-    )
+    REF "${VERSION}"
+    SHA512 6533dfdc48a8ee0f904c49edcd25a3c06a945cec7baa047ddbba78ae48fbf7b490718fe15eb7c729f9c097114b798ec5204302b37011906a0bed4de819616717
+    PATCHES
+        consume-vcpkg-eigen3.patch
+)
 
-configure_file(${SOURCE_PATH}/LICENSE.txt ${CURRENT_PACKAGES_DIR}/share/vcglib/copyright COPYONLY)
+# Remove non-header folders)
+file(REMOVE_RECURSE 
+    "${SOURCE_PATH}/wrap/gcache/docs" 
+    "${SOURCE_PATH}/wrap/gl/splatting_apss/shaders" 
+    "${SOURCE_PATH}/wrap/igl/sample" 
+    "${SOURCE_PATH}/wrap/nanoply"
+)
 
-file(COPY ${SOURCE_PATH}/vcg/ DESTINATION ${CURRENT_PACKAGES_DIR}/include/vcg)
-file(COPY ${SOURCE_PATH}/wrap/ DESTINATION ${CURRENT_PACKAGES_DIR}/include/wrap)
-file(COPY ${SOURCE_PATH}/img/ DESTINATION ${CURRENT_PACKAGES_DIR}/include/img)
+file(COPY "${SOURCE_PATH}/img"  DESTINATION "${CURRENT_PACKAGES_DIR}/include")
+file(COPY "${SOURCE_PATH}/vcg"  DESTINATION "${CURRENT_PACKAGES_DIR}/include")
+file(COPY "${SOURCE_PATH}/wrap" DESTINATION "${CURRENT_PACKAGES_DIR}/include" FILES_MATCHING PATTERN "*.h")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")

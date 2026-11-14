@@ -6,19 +6,21 @@ vcpkg_from_github(
     REF v2.3.0
     SHA512 9C65AE5D000CD66E39498667DC826A4E8A2C28EB4138CFFE3AA09D5DDC22575551B9FA6CE9D951343213B9583F947899CB18B58130AEAEE36DAB5881EA496272
     HEAD_REF master
+    PATCHES
+        avoid-stdext-checked-array-iterator.diff # https://github.com/rpclib/rpclib/pull/325
+        fix-arm64-windows.diff # https://github.com/rpclib/rpclib/pull/326
 )
 
-vcpkg_configure_cmake(
+vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     DISABLE_PARALLEL_CONFIGURE
-    PREFER_NINJA
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH "lib/cmake/rpclib")
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/rpclib")
 
 vcpkg_copy_pdbs()
 

@@ -1,39 +1,81 @@
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
-vcpkg_download_distfile(ARCHIVE
-    URLS "https://archive.apache.org/dist/zookeeper/zookeeper-3.5.5/apache-zookeeper-3.5.5.tar.gz"
-    FILENAME "zookeeper-3.5.5.tar.gz"
-    SHA512 4e22df899a83ca3cc15f6d94daadb1a8631fb4108e67b4f56d1f4fcf95f10f89c8ff1fb8a7c84799a3856d8803a8db1e1f2f3fe1b7dc0d6cedf485ef90fd212d
-)
+string(REGEX REPLACE "^([0-9]+[.][0-9]+[.][0-9]+)[.]([0-9]+)\$" "\\1-\\2" VERSION "${VERSION}")
 
-vcpkg_extract_source_archive_ex(
-    OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE}
+vcpkg_download_distfile(
+    zookeeper_src_archive
+    URLS "https://dlcdn.apache.org/zookeeper/stable/apache-zookeeper-${VERSION}.tar.gz"
+         "https://archive.apache.org/dist/zookeeper/zookeeper-${VERSION}/apache-zookeeper-${VERSION}.tar.gz"
+    FILENAME "apache-zookeeper-${VERSION}.tar.gz"
+    SHA512 61c05f6064797994dc25c42df35d67d2c3839fd59a496924852a4d78b492b06746c8eb5445edb63cbc0107ef2b8b31babf23488f96a52b00682cd2e9b61be339
+)
+vcpkg_extract_source_archive(
+    SOURCE_PATH
+    ARCHIVE "${zookeeper_src_archive}"
     PATCHES
         cmake.patch
         win32.patch
 )
+file(COPY "${CURRENT_PORT_DIR}/unofficial-zookeeperConfig.cmake" DESTINATION "${SOURCE_PATH}/zookeeper-client/zookeeper-client-c")
 
-set(WANT_SYNCAPI OFF)
-if("sync" IN_LIST FEATURES)
-    set(WANT_SYNCAPI ON)
-endif()
+# We must run the jute generator which is made from Java sources.
+# We fetch it as JAR from the latest matching binary release of zookeeper.
+vcpkg_download_distfile(
+    zookeeper_bin_archive
+    URLS "https://dlcdn.apache.org/zookeeper/stable/apache-zookeeper-${VERSION}-bin.tar.gz"
+         "https://archive.apache.org/dist/zookeeper/zookeeper-${VERSION}/apache-zookeeper-${VERSION}-bin.tar.gz"
+    FILENAME "apache-zookeeper-${VERSION}-bin.tar.gz"
+    SHA512 ab9bf90649df19d8fd8378f2e8d9159bc8528d8e4c166a93d9fa4a9c98e39ee9de0279cc9dc58cd6d593141c0a45576d0df9db47d143d63951598a43efdc0a30
+)
+vcpkg_extract_source_archive(
+    zookeeper_jute_path
+    ARCHIVE "${zookeeper_bin_archive}"
+)
+string(APPEND zookeeper_jute_path "/lib/zookeeper-jute-${VERSION}.jar")
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}/zookeeper-client/zookeeper-client-c
-    DISABLE_PARALLEL_CONFIGURE
-    PREFER_NINJA
-    OPTIONS
-        -DWANT_CPPUNIT=OFF
-        -DWANT_SYNCAPI=${WANT_SYNCAPI}
+block(SCOPE_FOR VARIABLES)
+    # Do not warn about FindJava.cmake accessing WIN32
+    set(Z_VCPKG_BACKCOMPAT_MESSAGE_LEVEL "TRACE")
+    set(WIN32 "${CMAKE_HOST_WIN32}")
+    find_package(Java COMPONENTS Runtime REQUIRED)
+
+    # cf. zookeeper-jute/pom.xml > "generate-C-Jute"
+    file(MAKE_DIRECTORY "${SOURCE_PATH}/zookeeper-client/zookeeper-client-c/generated")
+    vcpkg_execute_required_process(
+        COMMAND "${Java_JAVA_EXECUTABLE}"
+            -classpath "${zookeeper_jute_path}"
+            org.apache.jute.compiler.generated.Rcc
+            -l c
+            "${SOURCE_PATH}/zookeeper-jute/src/main/resources/zookeeper.jute"
+        WORKING_DIRECTORY "${SOURCE_PATH}/zookeeper-client/zookeeper-client-c/generated"
+        LOGNAME "generate-C-Jute"
+    )
+endblock()
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        openssl WITH_OPENSSL
+        openssl VCPKG_LOCK_FIND_PACKAGE_OpenSSL
+        sync    WANT_SYNCAPI
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}/zookeeper-client/zookeeper-client-c"
+    OPTIONS
+        -DTHREADS_PREFER_PTHREAD_FLAG=ON
+        -DWANT_CPPUNIT=OFF
+        -DWITH_CYRUS_SASL=OFF
+        ${FEATURE_OPTIONS}
+    MAYBE_UNUSED_VARIABLES
+        THREADS_PREFER_PTHREAD_FLAG
+        VCPKG_LOCK_FIND_PACKAGE_OpenSSL
+)
 
-file(INSTALL ${SOURCE_PATH}/zookeeper-client/zookeeper-client-c/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/zookeeper RENAME copyright)
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-
-vcpkg_fixup_cmake_targets()
-
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(PACKAGE_NAME unofficial-zookeeper)
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+file(COPY "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/zookeeper-client/zookeeper-client-c/LICENSE")

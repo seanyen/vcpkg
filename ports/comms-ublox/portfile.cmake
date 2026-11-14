@@ -3,28 +3,27 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO commschamp/cc.ublox.generated
-    REF v0.20.2
-    SHA512 5672d964ea3e505837e44a5fd928069a219a5731764cb54bfe8609e39c6c6dd0059660bcde317c6c60cd1bd8d1f7942d2faa022095bf651817568291bc6a7569
+    REF v${VERSION}
+    SHA512 3e923b9a9e27db6ed80687a0b1c07bf371f5612f8142cfe3efbd69d69a6523017972dbd9071981a936ca2fad7f1a9ac66f6a08de9f0be60900e7f38d0816008d
     HEAD_REF master
-    PATCHES
-        fix-comms.patch
 )
 
-vcpkg_configure_cmake(
+vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    PREFER_NINJA
     OPTIONS
-        -DOPT_BUILD_TEST=OFF
-        -DOPT_BUILD_PLUGIN=OFF
-        -DOPT_NO_COMMS=ON
-        -DOPT_EXTERNALS_UPDATE_DISCONNECTED=ON
+        -DOPT_REQUIRE_COMMS_LIB=ON
+        -DCMAKE_DISABLE_FIND_PACKAGE_Doxygen=ON
 )
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/ublox/cmake TARGET_PATH share/ublox)
+vcpkg_cmake_config_fixup(PACKAGE_NAME cc_ublox CONFIG_PATH lib/cc_ublox/cmake)
+vcpkg_replace_string(
+    "${CURRENT_PACKAGES_DIR}/share/cc_ublox/cc_ubloxConfig.cmake"
+    "# Compute the installation prefix relative to this file."
+    "include(CMakeFindDependencyMacro)\nfind_dependency(LibComms CONFIG)\n\n# Compute the installation prefix relative to this file."
+)
 # currently this is only a header only library. after moving lib/ublox to share this lib path will be empty
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
 
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/LICENSE.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

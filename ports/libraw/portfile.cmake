@@ -1,20 +1,19 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO LibRaw/LibRaw
-    REF d4f05dd1b9b2d44c8f7e82043cbad3c724db2416
-    SHA512 5794521f535163afd7815ad005295301c5e0e2f8b2f34ef0a911d9dd1572c1f456b292777548203f9767957a55782b5bc9041c033190d25d1e9b4240d7df32b9
+    REF "${VERSION}"
+    SHA512 a9453f8cff55302926c11c47ba7c8d04d81023bbbcad145551d2c0cc601de7eea8218d00a073e6b9ece845d3420897a2272a34fabf55f5b821183eaa7f66b3ef
     HEAD_REF master
 )
 
 vcpkg_from_github(
     OUT_SOURCE_PATH LIBRAW_CMAKE_SOURCE_PATH
     REPO LibRaw/LibRaw-cmake
-    REF a71f3b83ee3dccd7be32f9a2f410df4d9bdbde0a
-    SHA512 607e6f76bcb57534da4f0c864b7a421f1ed49244468b1b52abe77f65aa599cae80715520b3a951294321b812deffd4f163757c9949f337571aa54f414ccc58a5
+    REF eb98e4325aef2ce85d2eb031c2ff18640ca616d3
+    SHA512 63e68a4d30286ec3aa97168d46b7a1199268099ae27b61abcc92e93ec30e48d364086227983a1d724415e5f4da44d905422f30192453b95f31040e5f8469c3f9
     HEAD_REF master
     PATCHES
-        findlibraw_debug_fix.patch
-        lcms2_debug_fix.patch
+        dependencies.patch
         # Move the non-thread-safe library to manual-link. This is unfortunately needed
         # because otherwise libraries that build on top of libraw have to choose.
         fix-install.patch
@@ -23,19 +22,35 @@ vcpkg_from_github(
 file(COPY "${LIBRAW_CMAKE_SOURCE_PATH}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 file(COPY "${LIBRAW_CMAKE_SOURCE_PATH}/cmake" DESTINATION "${SOURCE_PATH}")
 
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        openmp      ENABLE_OPENMP
+        openmp      CMAKE_REQUIRE_FIND_PACKAGE_OpenMP
+        dng-lossy   CMAKE_REQUIRE_FIND_PACKAGE_JPEG
+)
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DINSTALL_CMAKE_MODULE_PATH=share/${PORT}
+        ${FEATURE_OPTIONS}
         -DENABLE_EXAMPLES=OFF
-        -DCMAKE_DEBUG_POSTFIX=d
+        -DCMAKE_REQUIRE_FIND_PACKAGE_Jasper=1
+        -DCMAKE_REQUIRE_FIND_PACKAGE_ZLIB=1
+    MAYBE_UNUSED_VARIABLES
+        CMAKE_REQUIRE_FIND_PACKAGE_OpenMP
 )
 
 vcpkg_cmake_install()
-
 vcpkg_copy_pdbs()
-
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake")
 vcpkg_fixup_pkgconfig()
+
+# Upstream sets CMAKE_DEBUG_POSTFIX "d" only for WIN32
+if(VCPKG_TARGET_IS_WINDOWS AND EXISTS "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libraw.pc")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libraw.pc" "-lraw" "-lrawd")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libraw_r.pc" "-lraw_r" "-lraw_rd")
+endif()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
     vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/libraw/libraw_types.h"
@@ -47,9 +62,18 @@ else()
     )
 endif()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
+file(COPY "${CURRENT_PACKAGES_DIR}/share/cmake/libraw/FindLibRaw.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+    "${CURRENT_PACKAGES_DIR}/share/cmake"
+    "${CURRENT_PACKAGES_DIR}/share/doc"
+)
 
 configure_file("${CMAKE_CURRENT_LIST_DIR}/vcpkg-cmake-wrapper.cmake" "${CURRENT_PACKAGES_DIR}/share/${PORT}/vcpkg-cmake-wrapper.cmake" @ONLY)
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
-file(INSTALL "${SOURCE_PATH}/COPYRIGHT" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/COPYRIGHT"
+    "${SOURCE_PATH}/LICENSE.LGPL"
+    "${SOURCE_PATH}/LICENSE.CDDL"
+)

@@ -1,32 +1,30 @@
-vcpkg_fail_port_install(ON_ARCH "arm" ON_TARGET "uwp" "linux" "osx")
+string(REGEX REPLACE "[.]([0-9])\$" ".0\\1" upstream_version "${VERSION}")
 
-set(7ZIP_VERSION 19.00)
-vcpkg_download_distfile(ARCHIVE
-    URLS "https://www.7-zip.org/a/7z1900-src.7z"
-    FILENAME "7z1900-src.7z"
-    SHA512 d68b308e175224770adc8b1495f1ba3cf3e7f67168a7355000643d3d32560ae01aa34266f0002395181ed91fb5e682b86e0f79c20625b42d6e2c62dd24a5df93
-)
-
-vcpkg_extract_source_archive_ex(
+vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE}
-    REF ${7ZIP_VERSION}
-    NO_REMOVE_ONE_LEVEL
+    REPO ip7z/7zip
+    REF "${upstream_version}"
+    SHA512 7b9228a3fd9b719e4f83472e764276deb708e34b53726e615cf6e7b5db2ba10453dc7729776c8a813f8de99c601f68fd7046aabbf4538e106b2417477e1afe91
+    HEAD_REF main
+    PATCHES
+        sort-asm.diff
+        fix_timespec_get_broken_on_android.patch
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/7zip-config.cmake.in" DESTINATION "${SOURCE_PATH}")
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        "-DVCPKG_TARGET_ARCHITECTURE=${VCPKG_TARGET_ARCHITECTURE}"
 )
 
-vcpkg_install_cmake()
-
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 
-file(
-    INSTALL ${CMAKE_CURRENT_LIST_DIR}/License.txt
-    DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT}
-    RENAME copyright
-)
+vcpkg_cmake_config_fixup()
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/DOC/License.txt")
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")

@@ -1,12 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO mfontanini/libtins
-    REF v4.3
-    SHA512 29d606004fe9a440c9a53eede42fd5c6dbd049677d2cca2c5cfd26311ee2ca4c64ca3e665fbc81efd5bfab5577a5181ed0754c617e139317d9ae0cabba05aff7
+    REF "v${VERSION}"
+    SHA512 d8887949cb545dbaf4247c8405feb5cc1032f370bb418dd5344043dc97555b1b826a8d33cfc7dd0a7a9a9af6f3a46bd6fcbed89f98d5eb23fdd10294f823fcd6
     HEAD_REF master
     PATCHES
         fix-source-writes.patch
         find-pcap_static.patch
+        fix_include.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" LIBTINS_BUILD_SHARED)
@@ -33,6 +34,14 @@ get_filename_component(LIBTINS_CMAKE_DIR "${LIBTINS_CMAKE_DIR}" PATH)
 get_filename_component(LIBTINS_CMAKE_DIR "${LIBTINS_CMAKE_DIR}" PATH)
 set(LIBTINS_INCLUDE_DIRS "${LIBTINS_CMAKE_DIR}/include")
 ]])
+
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/libtins/libtinsConfig.cmake" "\${LIBTINS_CMAKE_DIR}/libtinsTargets.cmake" "\${CMAKE_CURRENT_LIST_DIR}/libtinsTargets.cmake")
+
+if (VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/tins/macros.h" "!defined(TINS_STATIC)" "1")
+else()
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/tins/macros.h" "!defined(TINS_STATIC)" "0")
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 

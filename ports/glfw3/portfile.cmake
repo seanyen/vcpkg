@@ -1,8 +1,16 @@
+if (VCPKG_TARGET_IS_EMSCRIPTEN)
+    # emscripten has built-in glfw3 library
+    set(VCPKG_BUILD_TYPE release)
+    file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/glfw3Config.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/glfw3")
+    set(VCPKG_POLICY_EMPTY_PACKAGE enabled)
+    return()
+endif()
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO glfw/glfw
-    REF 3.3.5
-    SHA512 cbb8ebf25d3d826eb1daeff3ad2e0e965ce9def3352955f297743d918f625d96bc05bf87c90f7b57ec53376a0f2f6ce62f80b57fac4e81e023400de275e97beb
+    REF "${VERSION}"
+    SHA512 42e8b8bdc2ecaab8d33d43cab6cf6e4bfd1f23492a5f13ec4b3762b74661dc3c9625721f436fbf841909b9af3ac6dcb8080201b36592d33c2bb196f768fc307f
     HEAD_REF master
 )
 
@@ -13,9 +21,19 @@ if(VCPKG_TARGET_IS_LINUX)
     xcursor
     xorg
     libglu1-mesa
+    pkg-config
 
-These can be installed on Ubuntu systems via sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev")
+These can be installed on Ubuntu systems via sudo apt install libxinerama-dev libxcursor-dev xorg-dev libglu1-mesa-dev pkg-config
+
+Alternatively, when targeting the Wayland display server, use the packages listed in the GLFW documentation here:
+
+https://www.glfw.org/docs/3.3/compile.html#compile_deps_wayland")
 endif()
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+    wayland         GLFW_BUILD_WAYLAND
+)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -23,6 +41,9 @@ vcpkg_cmake_configure(
         -DGLFW_BUILD_EXAMPLES=OFF
         -DGLFW_BUILD_TESTS=OFF
         -DGLFW_BUILD_DOCS=OFF
+        ${FEATURE_OPTIONS}
+    MAYBE_UNUSED_VARIABLES
+        GLFW_USE_WAYLAND
 )
 
 vcpkg_cmake_install()
@@ -33,6 +54,4 @@ vcpkg_fixup_pkgconfig()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE.md" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-
-vcpkg_copy_pdbs()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.md")

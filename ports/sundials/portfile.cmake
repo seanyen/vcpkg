@@ -1,31 +1,35 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO LLNL/sundials
-    REF v5.8.0
-    SHA512 30f6a7bddf813634e4266c36331673b52448b719f938f45a4efb6a96cfbeea4fe168fdded89309672b148f8ef8bc05997d838627e828573900ec169a41472372
+    REF "v${VERSION}"
+    SHA512 f4c855698575754b111df8836432c6392a0d0c7946146a68041ec192f2d74e69882b0a0f3ce4513f6a8a01f8bbf0d0f216203705321ee2758acd9dbc57e2575f
     HEAD_REF master
-    PATCHES
-        install-dlls-in-bin.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" SUN_BUILD_STATIC)
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" SUN_BUILD_SHARED)
 
+if(VCPKG_TARGET_IS_ANDROID)
+    set(POSIX_TIMERS "-DSUNDIALS_POSIX_TIMERS=TRUE")
+endif()
+
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
-    OPTIONS 
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ${POSIX_TIMERS}
         -D_BUILD_EXAMPLES=OFF
+        -DSUNDIALS_TEST_UNITTESTS=OFF
         -DBUILD_STATIC_LIBS=${SUN_BUILD_STATIC}
         -DBUILD_SHARED_LIBS=${SUN_BUILD_SHARED}
 )
 
-vcpkg_cmake_install(DISABLE_PARALLEL)
+vcpkg_cmake_install()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
 file(REMOVE "${CURRENT_PACKAGES_DIR}/LICENSE")
 file(REMOVE "${CURRENT_PACKAGES_DIR}/debug/LICENSE")
 
 vcpkg_copy_pdbs()
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")

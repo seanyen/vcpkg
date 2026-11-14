@@ -9,7 +9,7 @@ if(VCPKG_TARGET_ARCHITECTURE MATCHES "^arm" AND VCPKG_TARGET_IS_WINDOWS)
 endif()
 
 if(NOT NO_BIN_AND_TOOLS)
-    set(TOOL_NAMES 
+    set(TOOL_NAMES
             dumpcpp
             dumpdoc
             idc
@@ -19,6 +19,7 @@ endif()
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
 FEATURES
+    "qml"           CMAKE_REQUIRE_FIND_PACKAGE_Qt6Quick
 INVERTED_FEATURES
     "qml"           CMAKE_DISABLE_FIND_PACKAGE_Qt6Quick
 )

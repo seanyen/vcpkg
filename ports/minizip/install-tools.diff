@@ -1,0 +1,49 @@
+diff --git a/contrib/minizip/CMakeLists.txt b/contrib/minizip/CMakeLists.txt
+index 6a18fa2..498cc91 100644
+--- a/contrib/minizip/CMakeLists.txt
++++ b/contrib/minizip/CMakeLists.txt
+@@ -311,11 +311,17 @@ endif(MINIZIP_BUILD_STATIC)
+ 
+ if(MINIZIP_INSTALL)
+     if(MINIZIP_BUILD_SHARED)
++        set(executables
++            ${ZLIB_CONTRIB_PREFIX}minizip
++            ${ZLIB_CONTRIB_PREFIX}miniunzip)
++        if(DISABLE_INSTALL_TOOLS)
++            set_target_properties(${executables} PROPERTIES EXCLUDE_FROM_ALL 1)
++            set(executables "")
++        endif()
+         install(
+             TARGETS
+                 ${ZLIB_CONTRIB_PREFIX}libminizip
+-                ${ZLIB_CONTRIB_PREFIX}minizip
+-                ${ZLIB_CONTRIB_PREFIX}miniunzip
++                ${executables}
+             COMPONENT Runtime
+             EXPORT minizipSharedExport
+             RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+@@ -341,12 +347,21 @@ if(MINIZIP_INSTALL)
+     endif(MINIZIP_BUILD_SHARED)
+ 
+     if(MINIZIP_BUILD_STATIC)
++        set(executables
++            ${ZLIB_CONTRIB_PREFIX}minizipstatic
++            ${ZLIB_CONTRIB_PREFIX}miniunzipstatic)
++        if(DISABLE_INSTALL_TOOLS)
++            set_target_properties(${executables} PROPERTIES EXCLUDE_FROM_ALL 1)
++            set(executables "")
++        else()
++            # Deliberately renaming the tools for uniform install names
++            set_target_properties(${ZLIB_CONTRIB_PREFIX}minizipstatic PROPERTIES OUTPUT_NAME minizip)
++            set_target_properties(${ZLIB_CONTRIB_PREFIX}miniunzipstatic PROPERTIES OUTPUT_NAME miniunzip)
++        endif()
+         install(
+             TARGETS
+                 ${ZLIB_CONTRIB_PREFIX}libminizipstatic
+-                ${ZLIB_CONTRIB_PREFIX}minizipstatic
+-                ${ZLIB_CONTRIB_PREFIX}miniunzipstatic
+-            COMPONENT Development
++                ${executables}
+             EXPORT minizipStaticExport
+             RUNTIME
+                 DESTINATION "${CMAKE_INSTALL_BINDIR}"

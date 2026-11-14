@@ -1,21 +1,35 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO lz4/lz4
-    REF v1.9.3
-    SHA512 c246b0bda881ee9399fa1be490fa39f43b291bb1d9db72dba8a85db1a50aad416a97e9b300eee3d2a4203c2bd88bda2762e81bc229c3aa409ad217eb306a454c
+    REF "v${VERSION}"
+    SHA512 1b9ecf6b5d0b53be6a7e28f85c63daeecfbf55dee2759dab5eb4647675975ccfe426152e382c30b8a8adb4038d40b312cceac4c56f348fb0977919869aa24669
     HEAD_REF dev
 )
 
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        tools LZ4_BUILD_CLI
+)
 
 vcpkg_cmake_configure(
-    SOURCE_PATH "${SOURCE_PATH}"
+    SOURCE_PATH "${SOURCE_PATH}/build/cmake"
+    OPTIONS
+        ${FEATURE_OPTIONS}
     OPTIONS_DEBUG
         -DCMAKE_DEBUG_POSTFIX=d
 )
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+
+if("tools" IN_LIST FEATURES)
+    vcpkg_copy_tools(
+        TOOL_NAMES lz4
+        AUTO_CLEAN
+    )
+else()
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/man")
+endif()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
     set(DLL_IMPORT "1 && defined(_MSC_VER)")
@@ -29,12 +43,22 @@ foreach(FILE lz4.h lz4frame.h)
     )
 endforeach()
 
-vcpkg_cmake_config_fixup()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/lz4")
+
 vcpkg_fixup_pkgconfig()
 if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
     vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/liblz4.pc" " -llz4" " -llz4d")
 endif()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+)
 
-file(INSTALL "${SOURCE_PATH}/lib/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+
+set(LICENSE_FILES "${SOURCE_PATH}/lib/LICENSE")
+if("tools" IN_LIST FEATURES)
+    list(APPEND LICENSE_FILES "${SOURCE_PATH}/programs/COPYING")
+endif()
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

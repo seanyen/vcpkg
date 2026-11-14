@@ -1,25 +1,35 @@
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY) # this mirrors ImGui's portfile behavior
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO eliasdaler/imgui-sfml
-    REF 9cc8c57a4565551087be0d9aeb3ae55490aa1207 #v2.4
-    SHA512 d44d85e44d17d05c4e21f71acbf5bf544364a9bbe4871be896edd29f9926948cd1ea7627b7d54524f7da64c494638fc126744ced57ea7997a4b712dd26eb6183
+    REPO sfml/imgui-sfml
+    REF "v${VERSION}"
+    SHA512 be02207533b532f10038bb83eb49311e57774dbddd1bac2ebb1789cbdef2abbfa24cee59b8b5889302feba72af1e98a4a1c7ac063e7d815ce1f2ef9bd40cf552
     HEAD_REF master
     PATCHES
         0001-fix_find_package.patch
-        004-fix-find-sfml.patch
-        005-fix-imtextureid-define.patch
+        0002-support-imgui-1.92.patch # https://github.com/SFML/imgui-sfml/pull/330
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DCMAKE_CXX_STANDARD=17
 )
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 
-vcpkg_cmake_config_fixup(PACKAGE_NAME ImGui-SFML CONFIG_PATH lib/cmake/ImGui-SFML)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/ImGui-SFML)
+file(READ "${CURRENT_PACKAGES_DIR}/share/imgui-sfml/ImGui-SFMLConfig.cmake" cmake_config)
+string(PREPEND cmake_config [[
+include(CMakeFindDependencyMacro)
+find_dependency(imgui CONFIG)
+find_dependency(SFML COMPONENTS Graphics Window System)
+]])
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/imgui-sfml/ImGui-SFMLConfig.cmake" "${cmake_config}")
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

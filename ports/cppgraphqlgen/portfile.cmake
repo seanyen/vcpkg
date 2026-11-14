@@ -1,19 +1,29 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO microsoft/cppgraphqlgen
-    REF v3.6.0
-    SHA512 148751b1db1b3e917e74ef93fe3533a29153f0b5d1a20544eda32d0376e2c6f5cfc2d60fbc9d077d595e7072d0b6a36dbf8f2524903db40b576ee48196b2c3e8
+    REF "v${VERSION}"
+    SHA512 eb26e6b9b51eabeb84ab82035097579dcdc5f44cc1d50ae85303bbab8fcc2a3da0749cef4e15bf09adb62a4783446bb8b661666db52517b2e98543177f662eb5
     HEAD_REF main
+    PATCHES
+        356.patch # https://patch-diff.githubusercontent.com/raw/microsoft/cppgraphqlgen/pull/356.patch
 )
 
-vcpkg_configure_cmake(
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        clientgen   GRAPHQL_BUILD_CLIENTGEN
+        rapidjson   GRAPHQL_USE_RAPIDJSON
+        schemagen   GRAPHQL_BUILD_SCHEMAGEN
+)
+
+vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
     OPTIONS 
         -DGRAPHQL_BUILD_TESTS=OFF 
         -DGRAPHQL_UPDATE_VERSION=OFF 
         -DGRAPHQL_UPDATE_SAMPLES=OFF 
         -DGRAPHQL_INSTALL_CONFIGURATIONS=Release
+        ${FEATURE_OPTIONS}
     OPTIONS_RELEASE 
         -DGRAPHQL_INSTALL_CMAKE_DIR=${CURRENT_PACKAGES_DIR}/share 
         -DGRAPHQL_INSTALL_TOOLS_DIR=${CURRENT_PACKAGES_DIR}/tools
@@ -22,16 +32,24 @@ vcpkg_configure_cmake(
         -DGRAPHQL_INSTALL_TOOLS_DIR=${CURRENT_PACKAGES_DIR}/debug/tools
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets()
+vcpkg_cmake_config_fixup()
 
-vcpkg_copy_tools(
-    TOOL_NAMES schemagen
-    SEARCH_DIR ${CURRENT_PACKAGES_DIR}/tools/cppgraphqlgen)
+set(tools "")
+if ("clientgen" IN_LIST FEATURES)
+    list(APPEND tools clientgen)
+endif()
+if ("schemagen" IN_LIST FEATURES)
+    list(APPEND tools schemagen)
+endif()
+list(LENGTH tools num_tools)
+if (num_tools GREATER 0)
+    vcpkg_copy_tools(
+        TOOL_NAMES ${tools}
+        SEARCH_DIR ${CURRENT_PACKAGES_DIR}/tools/cppgraphqlgen)
+endif()
 
 vcpkg_copy_pdbs()
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
 
 file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)

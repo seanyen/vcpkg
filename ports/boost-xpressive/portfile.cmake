@@ -3,10 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/xpressive
-    REF boost-1.77.0
-    SHA512 79fcb6050c770590b0756d6cc2980bf6c8a4824affb56e41e3cbbefadcf1b5bfb04476691ebda57c61c8511eb2a50ee9618fdd8f8f75a7617ddabbda551531b1
+    REF boost-${VERSION}
+    SHA512 f71251c77a4f9fea8e28ae74140369f51c2bf820385094e2111d2341d34fbff62c34031885196bf8f26db0618119a00a70c9664502cfb1c38f3d9ea018ebdcd9
     HEAD_REF master
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

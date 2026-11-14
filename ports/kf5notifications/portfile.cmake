@@ -1,13 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/knotifications
-    REF v5.88.0
-    SHA512 d805853d4cbc5652a28270210e9b09706f5e630287478caf3ad745692318c4ebe734b89eeb7d4aaa178fea850669afb136ead1aadb9e97442a84f7fd09d2655d
+    REF "v${VERSION}"
+    SHA512 c4a918f58a252fbbe86af15fef177a459275537520f61d35b7dc4ac51a20c6f95302dd713eacf3b9d96a0fd8c9cdb21fff394bd152ae1f31162aeb9a5b0049ee
     HEAD_REF master
 )
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -17,7 +17,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5Notifications CONFIG_PATH lib/cmake/KF5Notifications)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5Notifications)
 vcpkg_copy_pdbs()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
@@ -27,5 +27,5 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
-
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

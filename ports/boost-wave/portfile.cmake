@@ -3,15 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/wave
-    REF boost-1.77.0
-    SHA512 d7b940086776a54ab2907277bbdc6be40b99dd358fde333802076d1a7e671aaf09326fb1a3742f9d23036666e34efc0c9c58b7a421edd93f6807e10a1886d880
+    REF boost-${VERSION}
+    SHA512 b92210aefa222a47a4dc6ee47bd08a132b7f7d47ac21276ece6edf28abb71944d438e7aefcdd6f7574bc05187dcdc1cf8c566943e1d752348b6cd6f3db45649c
     HEAD_REF master
 )
 
-if(NOT DEFINED CURRENT_HOST_INSTALLED_DIR)
-    message(FATAL_ERROR "boost-wave requires a newer version of vcpkg in order to build.")
-endif()
-include(${CURRENT_HOST_INSTALLED_DIR}/share/boost-build/boost-modular-build.cmake)
-boost_modular_build(SOURCE_PATH ${SOURCE_PATH})
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

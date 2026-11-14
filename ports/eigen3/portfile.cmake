@@ -4,35 +4,42 @@ vcpkg_from_gitlab(
     GITLAB_URL https://gitlab.com
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libeigen/eigen
-    REF 3.3.9
-    SHA512 16244cc89f2e1879543232b965cbf653b3ccf10e967c8c437a41e27d8320392bdf584d8c24b8a97406ab7d1481d5154da74e0702ec1334ae6a46de83f4573a46
+    REF ${VERSION}
+    SHA512 b337d3bc38440db190a8f1fbc4eabc0098e69fcc95bfba195fe039ffb942cae2a7f0153f3094f35fa26325750d1c62e20cccaf916a41f5c7f248ec5e5d30a942
     HEAD_REF master
-    PATCHES
-        disable_pkgconfig_absolute_path_check.patch
-        fix-cuda-error.patch # issue https://gitlab.com/libeigen/eigen/-/issues/1526
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DBUILD_TESTING=OFF
+        -DEIGEN_BUILD_BLAS=OFF
+        -DEIGEN_BUILD_BTL=OFF
+        -DEIGEN_BUILD_CMAKE_PACKAGE=ON
+        -DEIGEN_BUILD_DEMOS=OFF
+        -DEIGEN_BUILD_DOC=OFF
+        -DEIGEN_BUILD_LAPACK=OFF
         -DEIGEN_BUILD_PKGCONFIG=ON
+        -DEIGEN_BUILD_SPBENCH=OFF
     OPTIONS_RELEASE
-        -DCMAKEPACKAGE_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/share/eigen3
-        -DPKGCONFIG_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/lib/pkgconfig
+        "-DCMAKEPACKAGE_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/share/${PORT}"
+        "-DPKGCONFIG_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/lib/pkgconfig"
     OPTIONS_DEBUG
-        -DCMAKEPACKAGE_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/debug/share/eigen3
-        -DPKGCONFIG_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig
+        "-DCMAKEPACKAGE_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/debug/share/${PORT}"
+        "-DPKGCONFIG_INSTALL_DIR=${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig"
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets()
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup()
 vcpkg_fixup_pkgconfig()
 
-file(GLOB INCLUDES ${CURRENT_PACKAGES_DIR}/include/eigen3/*)
-# Copy the eigen header files to conventional location for user-wide MSBuild integration
-file(COPY ${INCLUDES} DESTINATION ${CURRENT_PACKAGES_DIR}/include)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include ${CURRENT_PACKAGES_DIR}/debug/share)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL ${SOURCE_PATH}/COPYING.README DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(
+    FILE_LIST
+        "${SOURCE_PATH}/COPYING.README"
+        "${SOURCE_PATH}/COPYING.APACHE"
+        "${SOURCE_PATH}/COPYING.BSD"
+        "${SOURCE_PATH}/COPYING.MINPACK"
+        "${SOURCE_PATH}/COPYING.MPL2"
+)

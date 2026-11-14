@@ -3,10 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/endian
-    REF boost-1.77.0
-    SHA512 f7ed33602a5d9860fa460bca51f9576a3d0c90b703b5e833e106ccf7e28b1449e86f230b353823578a669fcd65922d206ba03a390bfed258dd37edd8435736cd
+    REF boost-${VERSION}
+    SHA512 1a451b9e918af3b29f30079a518b5ab3f82e8a2b1c1ec6a5874e9d22fe625e48c7cc4b5af87cceaa3a8416edec93aa38d96849041c293213a0e9deea4f4731ca
     HEAD_REF master
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

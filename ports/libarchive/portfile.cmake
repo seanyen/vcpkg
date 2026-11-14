@@ -1,41 +1,80 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libarchive/libarchive
-    REF 1b2c437b99b361c7692538fa373e99955e9b93ae      #v3.5.2
-    SHA512 df527dd333b01ed85f07831ba0bd4b1d0b5384fe12cfa53474ad39c04509105a3c8574a2d21a430e3584a931c8f6ae923bca95df83945f0c593c1ffaed3f62da
+    REF "v${VERSION}"
+    SHA512 c5d85564b70e3af24edc69f34829c70ba3abcaf042ba444e9344e54e594ac88a9cc22dcd21c806e2650f1ffde71e16aeaf70e9748d7ba124207ee832938656da
     HEAD_REF master
-    PATCHES 
-        disable-warnings.patch
+    PATCHES
         fix-buildsystem.patch
-        fix-cpu-set.patch
-        fix-dependencies.patch
-        pkgconfig-modules.patch
+        fix-deps.patch
 )
 
+if("xar" IN_LIST FEATURES)
+    # Cf. https://github.com/libarchive/libarchive/pull/2388:
+    # xmllite is available since Windows XP, but mingw-w64 added it with delay.
+    if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
+        list(APPEND FEATURES "xar/xmllite")
+    else()
+        list(APPEND FEATURES "xar/libxml2")
+    endif()
+endif()
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         bzip2   ENABLE_BZip2
-        libxml2 ENABLE_LIBXML2
+        bzip2   CMAKE_REQUIRE_FIND_PACKAGE_BZip2
         lz4     ENABLE_LZ4
+        lz4     CMAKE_REQUIRE_FIND_PACKAGE_lz4
         lzma    ENABLE_LZMA
+        lzma    CMAKE_REQUIRE_FIND_PACKAGE_LibLZMA
         lzo     ENABLE_LZO
-        openssl ENABLE_OPENSSL
         zstd    ENABLE_ZSTD
+        xar/libxml2  ENABLE_LIBXML2
+        xar/libxml2  CMAKE_REQUIRE_FIND_PACKAGE_LibXml2
+        xar/xmllite  ENABLE_WIN32_XMLLITE
+        xar/xmllite  HAVE_XMLLITE_H
 )
+# Default crypto backend is OpenSSL, but it is ignored for DARWIN
+set(WRAPPER_ENABLE_OPENSSL OFF)
+if(NOT "crypto" IN_LIST FEATURES)
+    list(APPEND FEATURE_OPTIONS
+        -DLIBMD_FOUND=FALSE
+        -DENABLE_OPENSSL=OFF
+    )
+elseif(VCPKG_TARGET_IS_OSX)
+    list(APPEND FEATURE_OPTIONS
+        -DENABLE_MBEDTLS=ON
+        -DENABLE_OPENSSL=OFF
+        -DCMAKE_REQUIRE_FIND_PACKAGE_MbedTLS=ON
+    )
+else()
+    set(WRAPPER_ENABLE_OPENSSL ON)
+    list(APPEND FEATURE_OPTIONS
+        -DCMAKE_REQUIRE_FIND_PACKAGE_OpenSSL=ON
+    )
+endif()
+
+# archive_random.c and archive_util.c always call BCrypt* on Windows, bcrypt must be linked.
+# ref. https://github.com/libarchive/libarchive/issues/3375
+if(VCPKG_TARGET_IS_WINDOWS)
+    set(ENABLE_CNG ON)
+else()
+    set(ENABLE_CNG OFF)
+endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         ${FEATURE_OPTIONS}
         -DENABLE_ZLIB=ON
+        -DZLIB_WINAPI=OFF
         -DENABLE_PCREPOSIX=OFF
         -DPOSIX_REGEX_LIB=NONE
+        -DENABLE_MBEDTLS=OFF
         -DENABLE_NETTLE=OFF
         -DENABLE_EXPAT=OFF
         -DENABLE_LibGCC=OFF
-        -DENABLE_CNG=OFF
+        -DENABLE_CNG=${ENABLE_CNG}
+        -DENABLE_UNZIP=OFF
         -DENABLE_TAR=OFF
         -DENABLE_CPIO=OFF
         -DENABLE_CAT=OFF
@@ -45,6 +84,14 @@ vcpkg_cmake_configure(
         -DENABLE_LIBB2=OFF
         -DENABLE_TEST=OFF
         -DENABLE_WERROR=OFF
+    MAYBE_UNUSED_VARIABLES
+        CMAKE_REQUIRE_FIND_PACKAGE_BZip2
+        CMAKE_REQUIRE_FIND_PACKAGE_LibLZMA
+        CMAKE_REQUIRE_FIND_PACKAGE_LibXml2
+        CMAKE_REQUIRE_FIND_PACKAGE_lz4
+        ENABLE_LibGCC
+        HAVE_XMLLITE_H
+        ZLIB_WINAPI
 )
 
 vcpkg_cmake_install()
@@ -55,15 +102,18 @@ vcpkg_copy_pdbs()
 
 configure_file("${CMAKE_CURRENT_LIST_DIR}/vcpkg-cmake-wrapper.cmake.in" "${CURRENT_PACKAGES_DIR}/share/${PORT}/vcpkg-cmake-wrapper.cmake" @ONLY)
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE
+      "${CURRENT_PACKAGES_DIR}/debug/include"
+      "${CURRENT_PACKAGES_DIR}/debug/share"
+      "${CURRENT_PACKAGES_DIR}/share/man"
+)
 
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
-endif()
-
-foreach(header "${CURRENT_PACKAGES_DIR}/include/archive.h" "${CURRENT_PACKAGES_DIR}/include/archive_entry.h")
-    vcpkg_replace_string("${header}" "(!defined LIBARCHIVE_STATIC)" "0")
+foreach(header "include/archive.h" "include/archive_entry.h")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/${header}" "(!defined LIBARCHIVE_STATIC)" "0")
 endforeach()
 
 file(INSTALL "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/COPYING"
+    "${SOURCE_PATH}/libarchive/archive_blake2.h"
+)

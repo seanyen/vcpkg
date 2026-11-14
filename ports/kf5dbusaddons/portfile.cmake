@@ -1,15 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/kdbusaddons
-    REF v5.88.0
-    SHA512 2ec44db614de6c705dbf43915d28afd2f945cb71d12c5a1dac6d2f76592970c067a354b9e81dc5a05a676b5e33ef78172687b3ec0e895041d72d4b7cf06925bb
+    REF "v${VERSION}"
+    SHA512 823ca3d3996be26aafb4c56f9ea588a8c8467e852d9d6f8a3ddafa9d1403a5707bcdc52df0b0834fbafe4cbe968d5482930e4d67698233cf7dd1783a5bcad2b5
     HEAD_REF master
-    PATCHES
-        x11_private_dependency.diff
 )
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -18,7 +16,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5DBusAddons CONFIG_PATH lib/cmake/KF5DBusAddons)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5DBusAddons)
 
 vcpkg_copy_pdbs()
 
@@ -32,5 +30,5 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
-
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

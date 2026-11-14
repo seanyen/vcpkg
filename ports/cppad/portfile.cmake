@@ -1,32 +1,37 @@
-# the compilation fails on arm and uwp. Please check the related issue:
-# https://github.com/microsoft/vcpkg/pull/12560#issuecomment-668412073
-vcpkg_fail_port_install(ON_TARGET "uwp" and "arm")
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+endif()
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO coin-or/CppAD
-    REF 90c510458b61049c51f937fc6ed2e611fbb17b8b #20210000.7
-    SHA512 112a4663a3e13f2d852c4ce4e57f6bee2dc7584915fcbab75972568258faab0d4a5761c4eaa4c664543cb8674e8e70c0623054c07dff933f9513a47f1c7d6261
+    REF "${VERSION}"
+    SHA512 abe9dd9a971f8d154990d54c1f798c8cab6bf90d016bb288efbcb23a14331897762610295658eec04fb50e5c13b05f4bb6b50a4647d6f0468eb94833dc3400d2
     HEAD_REF master
-    PATCHES
-        windows-fix.patch
 )
+
+vcpkg_find_acquire_program(PKGCONFIG)
+set(ENV{PKG_CONFIG} "${PKGCONFIG}")
+
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" cppad_static_lib)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     DISABLE_PARALLEL_CONFIGURE
     OPTIONS
-        -Dcppad_prefix=${CURRENT_PACKAGES_DIR}
-    OPTIONS_RELEASE
-        -Dcmake_install_libdirs=lib
-        -Dcppad_debug_which:STRING=debug_none
-    OPTIONS_DEBUG
-        -Dcmake_install_libdirs=debug/lib
+        -Dcppad_static_lib=${cppad_static_lib}
 )
 
 vcpkg_cmake_install()
 vcpkg_fixup_pkgconfig()
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/pkgconfig")
 
-# Add the copyright
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+    "${CURRENT_PACKAGES_DIR}/share/pkgconfig" # redundant
+    # Remove empty dirs
+    "${CURRENT_PACKAGES_DIR}/include/cppad/local/sweep/template"
+    "${CURRENT_PACKAGES_DIR}/include/cppad/local/var_op/template"
+)
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

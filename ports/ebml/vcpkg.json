@@ -1,10 +1,11 @@
 {
   "name": "ebml",
-  "version": "1.4.2",
+  "version": "1.4.7",
   "description": "A C++ library to parse EBML files",
   "homepage": "https://github.com/Matroska-Org/libebml",
-  "supports": "!uwp",
+  "license": "LGPL-2.1-or-later",
   "dependencies": [
+    "utfcpp",
     {
       "name": "vcpkg-cmake",
       "host": true

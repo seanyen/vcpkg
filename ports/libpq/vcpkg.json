@@ -1,115 +1,113 @@
 {
   "name": "libpq",
-  "version": "12.2",
-  "port-version": 20,
+  "version": "18.4",
+  "port-version": 2,
   "description": "The official database access API of postgresql",
   "homepage": "https://www.postgresql.org/",
-  "supports": "!uwp",
+  "license": "PostgreSQL",
+  "supports": "!uwp & !emscripten",
   "dependencies": [
     {
-      "name": "libpq",
-      "default-features": false,
-      "features": [
-        "bonjour"
-      ],
-      "platform": "osx"
+      "name": "vcpkg-cmake-get-vars",
+      "host": true
+    },
+    {
+      "name": "vcpkg-tool-meson",
+      "host": true
     }
   ],
   "default-features": [
+    "lz4",
     "openssl",
     "zlib"
   ],
   "features": {
-    "bonjour": {
-      "description": "Build with Bonjour support (--with-bonjour)"
+    "all": {
+      "description": "Build all supported features",
+      "dependencies": [
+        {
+          "name": "libpq",
+          "features": [
+            "client",
+            "icu",
+            "lz4",
+            "nls",
+            "openssl",
+            "zlib",
+            "zstd"
+          ]
+        },
+        {
+          "name": "libpq",
+          "features": [
+            "readline"
+          ],
+          "platform": "!windows"
+        }
+      ]
     },
     "client": {
-      "description": "Build all client tools and libraries."
+      "description": "Build all client tools and libraries",
+      "dependencies": [
+        {
+          "name": "libpq",
+          "host": true,
+          "default-features": false,
+          "features": [
+            "client"
+          ]
+        }
+      ]
     },
     "icu": {
-      "description": "Build with support for the ICU library (--with-icu)",
+      "description": "Build with support for the ICU library",
       "dependencies": [
         "icu"
       ]
     },
-    "libedit": {
-      "description": "prefer libedit (--with-libedit-preferred)",
+    "lz4": {
+      "description": "Use lz4",
       "dependencies": [
-        "libedit"
-      ]
-    },
-    "llvm": {
-      "description": "Build with support for LLVM based JIT compilation (--with-llvm)",
-      "dependencies": [
-        "llvm"
+        "lz4"
       ]
     },
     "nls": {
-      "description": "Native Language Support (--enable-nls[=LANGUAGES])",
+      "description": "Native Language Support",
+      "supports": "!osx",
       "dependencies": [
-        "gettext"
+        {
+          "name": "gettext",
+          "host": true,
+          "features": [
+            "tools"
+          ]
+        },
+        "gettext-libintl"
       ]
     },
     "openssl": {
-      "description": "support for encrypted client connections and random number generation on platforms that do not have \"/dev/urandom\" (except windows) (--with-openssl)",
+      "description": "support for encrypted client connections and random number generation on platforms that do not have \"/dev/urandom\" (except windows)",
       "dependencies": [
         "openssl"
       ]
     },
-    "python": {
-      "description": "build the PL/Python server programming language (dynamic only?) (--with-python)",
-      "dependencies": [
-        {
-          "name": "libpq",
-          "default-features": false,
-          "features": [
-            "client"
-          ]
-        },
-        "python3"
-      ]
-    },
     "readline": {
-      "description": "Use readline (else --without-readline)",
+      "description": "Use readline",
+      "supports": "!windows, mingw",
       "dependencies": [
         "readline"
       ]
     },
-    "systemd": {
-      "description": "Build with support for systemd service notifications. (--with-systemd)"
-    },
-    "tcl": {
-      "description": "build the PL/Tcl procedural language(dynamic only?) (--with-tcl)",
-      "dependencies": [
-        {
-          "name": "libpq",
-          "default-features": false,
-          "features": [
-            "client"
-          ]
-        },
-        "tcl"
-      ]
-    },
-    "uuid": {
-      "description": "Build the uuid-ossp module (which provides functions to generate UUIDs) (--with-uuid=LIBRARY LIBRARY=(bsd|e2fs|ossp))"
-    },
-    "xml": {
-      "description": "Build with libxml (--with-libxml)",
-      "dependencies": [
-        "libxml2"
-      ]
-    },
-    "xslt": {
-      "description": "Build with libxslt (--with-libxslt)",
-      "dependencies": [
-        "libxslt"
-      ]
-    },
     "zlib": {
-      "description": "Use zlib (else --without-zlib)",
+      "description": "Use zlib",
       "dependencies": [
         "zlib"
+      ]
+    },
+    "zstd": {
+      "description": "Use zstd",
+      "dependencies": [
+        "zstd"
       ]
     }
   }

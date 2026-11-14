@@ -3,9 +3,11 @@ message(WARNING "qtkeychain is a third-party extension to Qt and is not affiliat
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO frankosterfeld/qtkeychain
-    REF v0.13.2
-    SHA512 10f8b1c959a126ba14614b797ea5640404a0b95c71e452225c74856eae90e966aac581ca393508a2106033c3d5ad70427ea6f7ef3f2997eddf6d09a7b4fa26eb
+    REF "${VERSION}"
+    SHA512 a6372738e857d5f352b2dfca7737789c129b2e5be9dd5636cd913f1a0bee998cdadd6df319697ac0d307182fa17fe0415825e522babb7ef17b141bf047a3c57c
     HEAD_REF master
+    PATCHES
+        dbus-emscripten.patch
 )
 
 if(VCPKG_CROSSCOMPILING)
@@ -18,6 +20,7 @@ if(VCPKG_CROSSCOMPILING)
 endif()
 
 list(APPEND QTKEYCHAIN_OPTIONS -DBUILD_TEST_APPLICATION:BOOL=OFF)
+list(APPEND QTKEYCHAIN_OPTIONS -DBUILD_TESTING:BOOL=OFF)
 
 # FIXME: Why does build translations fail on arm64-windows?
 if (VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE STREQUAL arm64)
@@ -30,7 +33,7 @@ vcpkg_cmake_configure(
     DISABLE_PARALLEL_CONFIGURE
     SOURCE_PATH ${SOURCE_PATH}
     OPTIONS
-        -DBUILD_WITH_QT6=ON
+        -DBUILD_WITH_QT5=OFF
          ${QTKEYCHAIN_OPTIONS}
 )
 vcpkg_cmake_install()
@@ -44,5 +47,4 @@ file(REMOVE_RECURSE
     "${CURRENT_PACKAGES_DIR}/debug/share"
 )
 
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

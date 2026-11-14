@@ -1,36 +1,57 @@
 {
   "name": "osgearth",
-  "version": "3.2",
-  "port-version": 2,
-  "description": "osgEarth - Dynamic map generation toolkit for OpenSceneGraph Copyright 2021 Pelican Mapping.",
-  "homepage": "https://github.com/gwaldron/osgearth",
-  "supports": "!(x86 | wasm32)",
+  "version": "3.8.1",
+  "description": "osgEarth - 3D Maps for OpenSceneGraph",
+  "homepage": "https://github.com/pelicanmapping/osgearth",
+  "license": "MIT",
+  "supports": "!(arm | x86 | wasm32 | android)",
   "dependencies": [
-    "basisu",
-    "cfitsio",
-    "draco",
-    "geos",
-    "glew",
-    "libwebp",
-    "libzip",
-    "opengl",
     {
-      "name": "osg",
+      "name": "aws-sdk-cpp",
       "features": [
-        "plugins"
+        "s3"
       ]
     },
+    "blend2d",
+    "draco",
+    "gdal",
+    "geos",
+    {
+      "name": "imgui",
+      "features": [
+        "docking-experimental",
+        "opengl3-binding"
+      ]
+    },
+    "lerc",
+    "libwebp",
+    "meshoptimizer",
+    "opengl",
+    "osg",
     "protobuf",
-    "pthreads",
+    "spdlog",
     "sqlite3",
-    "tinyxml"
-  ],
-  "default-features": [
-    "tools"
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
   ],
   "features": {
+    "controls": {
+      "description": "Support for the old Controls API (superceded by imgui)"
+    },
+    "stb": {
+      "description": "build optional STB DXT image compressor",
+      "dependencies": [
+        "stb"
+      ]
+    },
     "tools": {
-      "description": "Build tools"
+      "description": "Build command-line tools"
     }
   }
 }

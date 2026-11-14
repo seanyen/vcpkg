@@ -1,47 +1,53 @@
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+string(REPLACE "." "_" CRYPTOPP_VERSION "${VERSION}")
 
 vcpkg_from_github(
   OUT_SOURCE_PATH CMAKE_SOURCE_PATH
-  REPO noloader/cryptopp-cmake
-  REF CRYPTOPP_8_5_0
-  SHA512 758633786c81f5a34ade0ab99983b3262bb3a028b086e734b1f8ddb618c801453d517f67176178936f87ec36a91fca93fba9bcaec4301705138954e6eb49d136
+  REPO abdes/cryptopp-cmake
+  REF "866aceb8b13b6427a3c4541288ff412ad54f11ea"
+  SHA512 "c891aa30f9bd26383617f3f224d5b098f9aca3342487a136af3dbe70ffae9a7b8590248717f16d665870c93992fed3b79c727c4deb6e8b060eec56ce1aa8cfca"
   HEAD_REF master
-  PATCHES
-    cmake.patch
 )
 
 vcpkg_from_github(
   OUT_SOURCE_PATH SOURCE_PATH
   REPO weidai11/cryptopp
-  REF CRYPTOPP_8_5_0
-  SHA512 e8dd210c9e9d4925edc456e4d68780deaa224d85e11394ad5da835dcb1a1e6b3e899aa473acf20449f9721116960884b6d88b29335479b305bb7e29faa87e6c0
+  REF "b5242667a24e3db8e4600e77b2e502ef204e5280"
+  SHA512 "4ed3e0a67cd6120d2c352c3bd42029ae38a5f2a0c57a4934980de8961d7f37134bedf17fca8178ea2ca9b43283763319dc108cb08f9ab0e43ead6da2d93d5c1c"
   HEAD_REF master
-  PATCHES patch.patch
+  PATCHES
+      patch.patch
+      cryptopp.patch
 )
 
-file(COPY ${CMAKE_SOURCE_PATH}/cryptopp-config.cmake DESTINATION ${SOURCE_PATH})
-file(COPY ${CMAKE_SOURCE_PATH}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
+file(COPY "${CMAKE_SOURCE_PATH}/cryptopp" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_SOURCE_PATH}/cmake" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_SOURCE_PATH}/test" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_SOURCE_PATH}/cryptopp/cryptoppConfig.cmake" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_SOURCE_PATH}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 
-if("pem-pack" IN_LIST FEATURES)
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        pem-pack CRYPTOPP_USE_PEM_PACK
+)
+
+if(CRYPTOPP_USE_PEM_PACK)
     vcpkg_from_github(
         OUT_SOURCE_PATH PEM_PACK_SOURCE_PATH
         REPO noloader/cryptopp-pem
-        REF 095f08ff2ef9bca7b81036a59f2395e4f08ce2e8
-        SHA512 49912758a635faca1f49665ac9552b20576b46e0283aaabc19bb012bdc80586106452018e5088b9b46967717982ca6022ca968edc4cac96a7506d2b1a3e4bf13
+        REF 64782e531d116ffbf83ca80614ac408dbb3fd775
+        SHA512 154cf045f822a0da54a88ceb89d5b42cb8ad2eface73eb32a8eee0c4e60be10f4692442f1913f58e894b46412884907f5f70d99d1691ccf52e0aa50c9c9943cd
         HEAD_REF master
     )
-
-    file(GLOB PEM_PACK_FILES
-        ${PEM_PACK_SOURCE_PATH}/*.h
-        ${PEM_PACK_SOURCE_PATH}/*.cpp
+    list(APPEND FEATURE_OPTIONS
+        -Dcryptopp-pem_SOURCE_DIR="${PEM_PACK_SOURCE_PATH}"
     )
-    file(COPY ${PEM_PACK_FILES} DESTINATION ${SOURCE_PATH})
 endif()
 
 # disable assembly on ARM Windows to fix broken build
 if (VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE MATCHES "^arm")
     set(CRYPTOPP_DISABLE_ASM "ON")
-else()
+elseif(NOT DEFINED CRYPTOPP_DISABLE_ASM) # Allow disabling using a triplet file
     set(CRYPTOPP_DISABLE_ASM "OFF")
 endif()
 
@@ -51,23 +57,42 @@ endif()
 #   https://www.cryptopp.com/wiki/Visual_Studio#Dynamic_Runtime_Linking
 #   https://www.cryptopp.com/wiki/Visual_Studio#The_DLL
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DBUILD_SHARED=OFF
+        -DCRYPTOPP_SOURCES=${SOURCE_PATH}
+        -DCRYPTOPP_BUILD_SHARED=OFF
         -DBUILD_STATIC=ON
-        -DBUILD_TESTING=OFF
-        -DBUILD_DOCUMENTATION=OFF
-        -DDISABLE_ASM=${CRYPTOPP_DISABLE_ASM}
+        -DCRYPTOPP_BUILD_TESTING=OFF
+        -DCRYPTOPP_BUILD_DOCUMENTATION=OFF
+        -DCRYPTOPP_DISABLE_ASM=${CRYPTOPP_DISABLE_ASM}
+        -DUSE_INTERMEDIATE_OBJECTS_TARGET=OFF # Not required when we build static only
+        -DCMAKE_POLICY_DEFAULT_CMP0063=NEW # Honor "<LANG>_VISIBILITY_PRESET" properties
+        ${FEATURE_OPTIONS}
+    MAYBE_UNUSED_VARIABLES
+        BUILD_STATIC
+        USE_INTERMEDIATE_OBJECTS_TARGET
+        CMAKE_POLICY_DEFAULT_CMP0063
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/cryptopp)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH share/cmake/cryptopp)
+
+if(NOT VCPKG_BUILD_TYPE)
+    file(RENAME "${CURRENT_PACKAGES_DIR}/debug/share/pkgconfig" "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig")
+endif()
+file(RENAME "${CURRENT_PACKAGES_DIR}/share/pkgconfig" "${CURRENT_PACKAGES_DIR}/lib/pkgconfig")
+vcpkg_fixup_pkgconfig()
 
 # There is no way to suppress installation of the headers and resource files in debug build.
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+
+
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
+endif()
 
 # Handle copyright
-file(COPY ${SOURCE_PATH}/License.txt DESTINATION ${CURRENT_PACKAGES_DIR}/share/cryptopp)
-file(RENAME ${CURRENT_PACKAGES_DIR}/share/cryptopp/License.txt ${CURRENT_PACKAGES_DIR}/share/cryptopp/copyright)
+file(COPY "${SOURCE_PATH}/License.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+file(RENAME "${CURRENT_PACKAGES_DIR}/share/${PORT}/License.txt" "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")

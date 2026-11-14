@@ -1,7 +1,10 @@
+set(VCPKG_BUILD_TYPE release) # header-only
+
 vcpkg_from_github(OUT_SOURCE_PATH SOURCE_PATH
-    REPO dtschump/CImg
-    REF b33dcc8f9f1acf1f276ded92c04f8231f6c23fcd # v2.9.9
-    SHA512 327c72320e7cac386ba72d417c45b9e8b40df34650370c34e687c362731919af1b447b2ee498f21278d4af155f0d9dbfabd222856d5f18c2e05569fa638a5909
+    REPO GreycLab/CImg
+    # Using commit id becuase upstream likes to change tags
+    REF 81f0dd58ac6a178e8d2d20153827af76fe65357a
+    SHA512 ce6fd3642a15ee0fb8ba315225205a39866f2ab967860ab1197795234d7a1a748b6de0163408ab4e571092107171e29891e09c2e544f7a48f1f0280dbafd5978
     HEAD_REF master
 )
 
@@ -13,9 +16,10 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
-# Move cmake files, ensuring they will be 3 directories up the import prefix
-file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/share/${PORT}")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
-
-file(INSTALL "${SOURCE_PATH}/Licence_CeCILL-C_V1-en.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-file(INSTALL "${SOURCE_PATH}/Licence_CeCILL_V2-en.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright2)
+vcpkg_install_copyright(
+    COMMENT "plugins/matlab.h does not specify an LGPL version; the manifest represents this notice as LicenseRef-LGPL."
+    FILE_LIST
+        "${SOURCE_PATH}/Licence_CeCILL-C_V1-en.txt"
+        "${SOURCE_PATH}/Licence_CeCILL_V2-en.txt"
+        "${SOURCE_PATH}/plugins/matlab.h"
+)

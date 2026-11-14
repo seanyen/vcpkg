@@ -5,21 +5,25 @@ endif()
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO google/nsync
-    REF 1.24.0
-    SHA512 14dd582488072123a353c967664ed9a3f636865bb35e64d7256dcc809539129fa47c7979a4009fd45c9341cac537a4ca6b4b617ba2cae1d3995a7c251376339f
+    REF "${VERSION}"
+    SHA512 fdcd61eb686ca6d6804d82837fcd33ddee54d6b2aeb7bc20cdff8c5bd2a75f87b724f72c7e835459a1a82ee8bed3d6da5e4c111b3bca22545c6e037f129839f2
     HEAD_REF master
     PATCHES
         fix-install.patch
+        add-include-chrono.patch # https://github.com/google/nsync/pull/25
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DNSYNC_ENABLE_TESTS=OFF
 )
-vcpkg_install_cmake()
+vcpkg_cmake_build()
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/nsync_cpp PACKAGE_NAME nsync_cpp DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/nsync)
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

@@ -1,53 +1,104 @@
 {
   "name": "colmap",
-  "version-string": "3.6",
-  "port-version": 1,
-  "description": "COLMAP is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface. It offers a wide range of features for reconstruction of ordered and unordered image collections. The software is licensed under the new BSD license.",
+  "version": "4.1.1",
+  "description": "COLMAP is a general-purpose Structure-from-Motion (SfM) and Multi-View Stereo (MVS) pipeline with a graphical and command-line interface.",
   "homepage": "https://colmap.github.io/",
   "license": "BSD-3-Clause",
+  "supports": "(linux | windows | osx) & (x86 | x64 | arm64)",
   "dependencies": [
-    "boost-filesystem",
+    "boost-algorithm",
     "boost-graph",
+    "boost-heap",
     "boost-program-options",
-    "boost-regex",
-    "boost-system",
-    "boost-test",
+    "boost-property-map",
+    "boost-property-tree",
     {
       "name": "ceres",
       "features": [
         "lapack",
+        "schur",
         "suitesparse"
       ]
     },
-    {
-      "name": "cgal",
-      "features": [
-        "qt"
-      ]
-    },
     "eigen3",
-    "freeimage",
+    "faiss",
     "gflags",
     "glew",
     "glog",
-    "qt5-base",
-    "suitesparse"
+    {
+      "name": "jasper",
+      "default-features": false
+    },
+    "metis",
+    "openimageio",
+    "poselib",
+    "sqlite3",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
   ],
   "features": {
+    "cgal": {
+      "description": "Build with CGAL support.",
+      "dependencies": [
+        "cgal"
+      ]
+    },
     "cuda": {
-      "description": "CUDA support for current compute architecture of this machine.",
+      "description": "Build with CUDA support for the native architecture.",
       "dependencies": [
         "cuda"
       ]
     },
     "cuda-redist": {
-      "description": "Redistributable CUDA support for common supported compute architectures.",
+      "description": "Build with redistributable CUDA support for common supported compute architectures.",
       "dependencies": [
         "cuda"
       ]
     },
-    "tests": {
-      "description": "Enable TESTS."
+    "download": {
+      "description": "Build with automatic resource download support.",
+      "dependencies": [
+        {
+          "name": "cryptopp",
+          "platform": "windows & arm64"
+        },
+        {
+          "name": "curl",
+          "default-features": false,
+          "features": [
+            "ssl"
+          ]
+        },
+        {
+          "name": "openssl",
+          "platform": "!(windows & arm64)"
+        }
+      ]
+    },
+    "gui": {
+      "description": "Build with GUI support.",
+      "dependencies": [
+        "qtbase",
+        "qtsvg"
+      ]
+    },
+    "onnx": {
+      "description": "Build with ONNX support.",
+      "supports": "windows",
+      "dependencies": [
+        {
+          "name": "onnxruntime",
+          "features": [
+            "cuda"
+          ]
+        }
+      ]
     }
   }
 }

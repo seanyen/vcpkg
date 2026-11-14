@@ -1,10 +1,8 @@
-vcpkg_fail_port_install(ON_TARGET "uwp")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO warmcat/libwebsockets
-    REF a5aae049b2a386712e1be3b417915c0d44c7e675 # v4.3.0
-    SHA512 ab72201880360a3b0136497c1c1729656c3c07043f38cceec136f5671be15ab55c80136ec7480841175d3add711593ddde23cefd39ea9cb729ec0842950602dd
+    REF "v${VERSION}"
+    SHA512 77fcb15c325d514fee18193a6509755618ce4232115259377d67f93015490a11642f5974fddd2efebc89496e28a52f0a135b6635c662be1e2c641aaa68397b11
     HEAD_REF master
     PATCHES
         fix-dependency-libuv.patch
@@ -14,6 +12,7 @@ vcpkg_from_github(
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" LWS_WITH_STATIC)
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" LWS_WITH_SHARED)
+string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "static" STATIC_CRT)
 
 ## All LWS options could be possible features:
 # #
@@ -132,11 +131,18 @@ string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" LWS_WITH_SHARED)
 # option(LWS_WITH_LWS_DSH "Support lws_dsh_t Disordered Shared Heap" OFF)
 ##
 
+set(EXTRA_ARGS)
+if(NOT VCPKG_TARGET_ARCHITECTURE STREQUAL "wasm32")
+    set(EXTRA_ARGS "-DLWS_WITH_LIBUV=ON")
+endif()
+
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
+        ${EXTRA_ARGS}
         -DLWS_WITH_STATIC=${LWS_WITH_STATIC}
         -DLWS_WITH_SHARED=${LWS_WITH_SHARED}
+        -DLWS_MSVC_STATIC_RUNTIME=${STATIC_CRT}
         -DLWS_WITH_GENCRYPTO=ON
         -DLWS_WITH_TLS=ON
         -DLWS_WITH_BUNDLED_ZLIB=OFF
@@ -144,8 +150,8 @@ vcpkg_cmake_configure(
         -DLWS_IPV6=ON
         -DLWS_WITH_HTTP2=ON
         -DLWS_WITH_HTTP_STREAM_COMPRESSION=ON # Since zlib is already a dependency
-        -DLWS_WITH_LIBUV=ON
         -DLWS_WITH_EXTERNAL_POLL=ON
+        -DLWS_WITH_LIBCAP=OFF # otherwise libwebsockets.h includes <sys/capability.h> when the build host has libcap
     # OPTIONS_RELEASE -DOPTIMIZE=1
     # OPTIONS_DEBUG -DDEBUGGABLE=1
 )
@@ -166,11 +172,11 @@ string(REPLACE "/../include" "/../../include" LIBWEBSOCKETSCONFIG_CMAKE "${LIBWE
 file(WRITE "${CURRENT_PACKAGES_DIR}/share/libwebsockets/libwebsockets-config.cmake" "${LIBWEBSOCKETSCONFIG_CMAKE}")
 
 if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-    vcpkg_replace_string( "${CURRENT_PACKAGES_DIR}/share/libwebsockets/LibwebsocketsTargets-debug.cmake" "websockets_static.lib" "websockets.lib")
+    vcpkg_replace_string( "${CURRENT_PACKAGES_DIR}/share/libwebsockets/LibwebsocketsTargets-debug.cmake" "websockets_static.lib" "websockets.lib" IGNORE_UNCHANGED)
 endif()
 
 if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-    vcpkg_replace_string( "${CURRENT_PACKAGES_DIR}/share/libwebsockets/LibwebsocketsTargets-release.cmake" "websockets_static.lib" "websockets.lib")
+    vcpkg_replace_string( "${CURRENT_PACKAGES_DIR}/share/libwebsockets/LibwebsocketsTargets-release.cmake" "websockets_static.lib" "websockets.lib" IGNORE_UNCHANGED)
 endif()
 
 if (VCPKG_LIBRARY_LINKAGE STREQUAL static)

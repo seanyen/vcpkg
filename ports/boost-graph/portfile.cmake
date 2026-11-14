@@ -3,15 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/graph
-    REF boost-1.77.0
-    SHA512 e7b318d18ec8586578d20398de862c852157f272bcc397b92a8808eb931aa1ca472df26972b052c123e3bed0213d41ad670bdc63621c6d5ef26495b66378bc76
+    REF boost-${VERSION}
+    SHA512 8516a5e33a7c2017c4a2e71e6d54cfb74a69090de826bdd9db2348adb39a00ecd5d936d05abdd6bbb6db72aaf1b5cc68a831891017dd9edb7ab32ac96293950a
     HEAD_REF master
 )
 
-if(NOT DEFINED CURRENT_HOST_INSTALLED_DIR)
-    message(FATAL_ERROR "boost-graph requires a newer version of vcpkg in order to build.")
-endif()
-include(${CURRENT_HOST_INSTALLED_DIR}/share/boost-build/boost-modular-build.cmake)
-boost_modular_build(SOURCE_PATH ${SOURCE_PATH})
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

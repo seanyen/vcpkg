@@ -1,31 +1,37 @@
 {
   "name": "avro-cpp",
-  "version-date": "2021-06-01",
-  "port-version": 1,
+  "version": "1.12.2",
+  "port-version": 3,
   "description": "Apache Avro is a data serialization system",
   "homepage": "https://github.com/apache/avro",
-  "supports": "!(windows & static)",
+  "license": "Apache-2.0",
+  "supports": "!uwp",
   "dependencies": [
-    "boost-crc",
-    "boost-filesystem",
-    "boost-format",
-    "boost-iostreams",
-    "boost-math",
-    "boost-program-options",
-    "boost-random",
-    "boost-test",
-    "boost-thread",
-    "bzip2",
-    "liblzma",
-    "libzip",
-    "zlib",
-    "zstd"
+    "fmt",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    },
+    "zlib"
   ],
   "features": {
     "snappy": {
       "description": "Support Snappy for compression",
       "dependencies": [
         "snappy"
+      ]
+    },
+    "tools": {
+      "description": "Build extra executables"
+    },
+    "zstd": {
+      "description": "Support zstd for compression",
+      "dependencies": [
+        "zstd"
       ]
     }
   }

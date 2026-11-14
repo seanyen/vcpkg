@@ -1,28 +1,33 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO cdcseacave/TinyEXIF
-    REF c57a5fec1a847ec0e7b482b2da72e1f04fc2e147
-    SHA512 a968e79b4b7a6f5f189328a8dc493da5c0d568526b5dca46b9bfc0cf85295fb348bd0b38828fedbb7b6e4467fc8932d0d7b435b4acbfe662e954cbed1d0ea914
+    REF ${VERSION}
+    SHA512 55ad864d1b6af557eacf1c0e7d58fcdbfe3da4b5b6b9da7977c8717d53a4d6ab5f9e629aa4d336026745e14ff7b736a5fbf68a813c148636c0a20c191f26c5e4
     HEAD_REF master
 )
 
-string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" BUILD_STATIC_LIBS)
+string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "static" LINK_CRT_STATIC)
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DBUILD_STATIC_LIBS=${BUILD_STATIC_LIBS}
+        -DLINK_CRT_STATIC_LIBS=${LINK_CRT_STATIC}
         -DBUILD_DEMO=OFF
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/TinyEXIF)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/TinyEXIF)
 
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
 # Handle copyright
-file(INSTALL ${SOURCE_PATH}/README.md DESTINATION ${CURRENT_PACKAGES_DIR}/share/tinyexif RENAME copyright)
+# Upstream is MIT for its own contributions, but portions derive from easyexif
+# and remain additionally subject to its BSD-2-Clause terms; both notices ship
+# in the source tree and both must be installed.
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/LICENSE"
+    "${SOURCE_PATH}/LICENSE.easyexif"
+)

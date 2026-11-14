@@ -1,29 +1,25 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO PJK/libcbor
-    REF v0.8.0
-    SHA512 694d2d3a78d80072f96e0afb73590ca1f3572e41d2117330ef4313ed06271743b048d3ba3259c6ffe9a802d5e441379d0e54787d1d42fed08dc81ac4f06c6dbc
+    REF "v${VERSION}"
+    SHA512 e580543d9cb567d484e14c3057c5c1672f012879abe3f04ead64bf0f14b95b986fcc26602b0ffc2b247e9bfbd8a914d676c25d4f62230ac8fd5a6727f7d34595
     HEAD_REF master
 )
 
-vcpkg_configure_cmake(
-        SOURCE_PATH ${SOURCE_PATH}
-        PREFER_NINJA
-        OPTIONS
-        -DWITH_TESTS=OFF
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DSANITIZE=OFF
         -DWITH_EXAMPLES=OFF
-        -DVCPKG_VERBOSE=ON
-     )
+        -DWITH_TESTS=OFF
+)
 
-vcpkg_build_cmake()
-vcpkg_install_cmake()
-
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+vcpkg_cmake_build()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
 
-# Add Cmake Packagefile
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/LibCborConfig.cmake DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-# Handle copyright
-configure_file(${SOURCE_PATH}/LICENSE.md ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.md")

@@ -1,24 +1,33 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO json-c/json-c
-    REF eae040a84a479ccad1d1c48314345c51ecf1a4a4
-    SHA512 18d8a31b341830b04676cad13fbc0608fb75a323522161ac8fd0bb5058db82c1c261d504696a1e12f4b03eb0967632885580ff81d808adf2f1dff7e32d131ba0
+    REF "json-c-${VERSION}"
+
+    SHA512 3be9058351acb3d9a66c7ae850391ebaa80472b42ee3f013f8b655743eb41b55513e0546c6798399af98ed049b80d11c93286ea3f5af26dc5f199905a28c4db1
     HEAD_REF master
-    PATCHES pkgconfig.patch
+    PATCHES
+        json_object_put-leak.patch
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" JSON_BUILD_STATIC)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" JSON_BUILD_SHARED)
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DBUILD_TESTING=OFF
+        -DBUILD_STATIC_LIBS=${JSON_BUILD_STATIC}
+        -DBUILD_SHARED_LIBS=${JSON_BUILD_SHARED}
+        -DDISABLE_EXTRA_LIBS=ON
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/${PORT})
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
 vcpkg_fixup_pkgconfig()
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
 # Handle copyright
-configure_file(${SOURCE_PATH}/COPYING ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

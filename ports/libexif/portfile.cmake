@@ -1,26 +1,33 @@
-vcpkg_fail_port_install(ON_TARGET uwp)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libexif/libexif
-    REF libexif-0_6_22-release
-    SHA512 6c63abe2734c9e83fb04adb00bdd77f687165007c0efd0279df26c101363b990604050c430c7dd73dfa8735dd2fd196334d321bdb114d4869998f21e7bed5b43
+    REF "v${VERSION}"
+    SHA512 c586cf0b31bcdae126943453af8b2631c96a6854c10e6370772f61d1e38a8f8353536ff50c4222956e5bb5908c687c58e8ceb092e105bd0e5325994a34f28324
     HEAD_REF master
-    PATCHES add-missing-_stdint-h.patch
+    PATCHES
+        fix-ssize.patch
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/config.h.cmake DESTINATION ${SOURCE_PATH})
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/libexif.def    DESTINATION ${SOURCE_PATH})
+vcpkg_list(SET options)
+if("nls" IN_LIST FEATURES)
+    vcpkg_list(APPEND options "--enable-nls")
+else()
+    vcpkg_list(APPEND options "--disable-nls")
+endif()
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_make_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    AUTORECONF
+    OPTIONS
+        ${options}
+        --enable-internal-docs=no
+        --enable-ship-binaries=no
 )
 
-vcpkg_install_cmake()
-vcpkg_copy_pdbs()
+vcpkg_make_install()
+vcpkg_fixup_pkgconfig()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/unofficial-libexif-config.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/unofficial-${PORT}")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

@@ -1,43 +1,39 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO paullouisageneau/libdatachannel
-    REF 267fdc190bcd276aacf45e4cd5ab8a51541161e8 #v0.15.1
-    SHA512 333b1308b9f620326aa3b1af30aed8be2011c3a5a7d850e94476b8a14f696cef4cc815fda57e7a205cc264a077b7d1fa403ff1354364aae58651cdb0324c951b
+    REF "v${VERSION}"
+    SHA512 95ee4e0be3c524867bf14ecbe438ab3bca08fd939e4ce79ca35b66055ff2cca8e61779eb8ad16ba0f3b2eb86b469f0e82cc0e7bff286f0797607a26c2c2b6e58
     HEAD_REF master
     PATCHES
-        0001-fix-for-vcpkg.patch
+        dependencies.diff
+        uwp-warnings.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         stdcall CAPI_STDCALL
     INVERTED_FEATURES
-        ws NO_WEBSOCKET
-        srtp NO_MEDIA
+        ws      NO_WEBSOCKET
+        srtp    NO_MEDIA
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         ${FEATURE_OPTIONS}
-        -DUSE_SYSTEM_SRTP=ON
+        -DPREFER_SYSTEM_LIB=ON
         -DNO_EXAMPLES=ON
         -DNO_TESTS=ON
 )
 
 vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/LibDataChannel)
 
-vcpkg_cmake_config_fixup(PACKAGE_NAME LibDataChannel CONFIG_PATH lib/cmake/LibDataChannel)
-vcpkg_fixup_pkgconfig()
-
-file(READ "${CURRENT_PACKAGES_DIR}/share/LibDataChannel/LibDataChannelConfig.cmake" DATACHANNEL_CONFIG)
-file(WRITE "${CURRENT_PACKAGES_DIR}/share/LibDataChannel/LibDataChannelConfig.cmake" "
-include(CMakeFindDependencyMacro)
-find_dependency(Threads)
-find_dependency(OpenSSL)
-find_dependency(LibJuice)
-${DATACHANNEL_CONFIG}")
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/rtc/common.hpp" "#ifdef RTC_STATIC" "#if 1")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/rtc/rtc.h" "#ifdef RTC_STATIC" "#if 1")
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

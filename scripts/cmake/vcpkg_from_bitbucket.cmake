@@ -1,61 +1,3 @@
-#[===[.md:
-# vcpkg_from_bitbucket
-
-Download and extract a project from Bitbucket.
-
-## Usage:
-```cmake
-vcpkg_from_bitbucket(
-    OUT_SOURCE_PATH <SOURCE_PATH>
-    REPO <Microsoft/cpprestsdk>
-    [REF <v2.0.0>]
-    [SHA512 <45d0d7f8cc350...>]
-    [HEAD_REF <master>]
-    [PATCHES <patch1.patch> <patch2.patch>...]
-)
-```
-
-## Parameters:
-### OUT_SOURCE_PATH
-Specifies the out-variable that will contain the extracted location.
-
-This should be set to `SOURCE_PATH` by convention.
-
-### REPO
-The organization or user and repository on GitHub.
-
-### REF
-A stable git commit-ish (ideally a tag) that will not change contents. **This should not be a branch.**
-
-For repositories without official releases, this can be set to the full commit id of the current latest master.
-
-If `REF` is specified, `SHA512` must also be specified.
-
-### SHA512
-The SHA512 hash that should match the archive (https://bitbucket.com/${REPO}/get/${REF}.tar.gz).
-
-This is most easily determined by first setting it to `0`, then trying to build the port. The error message will contain the full hash, which can be copied back into the portfile.
-
-### HEAD_REF
-The unstable git commit-ish (ideally a branch) to pull for `--head` builds.
-
-For most projects, this should be `master`. The chosen branch should be one that is expected to be always buildable on all supported platforms.
-
-### PATCHES
-A list of patches to be applied to the extracted sources.
-
-Relative paths are based on the port directory.
-
-## Notes:
-At least one of `REF` and `HEAD_REF` must be specified, however it is preferable for both to be present.
-
-This exports the `VCPKG_HEAD_VERSION` variable during head builds.
-
-## Examples:
-
-* [blaze](https://github.com/Microsoft/vcpkg/blob/master/ports/blaze/portfile.cmake)
-#]===]
-
 function(vcpkg_from_bitbucket)
     cmake_parse_arguments(PARSE_ARGV 0 "arg"
         ""
@@ -115,7 +57,7 @@ function(vcpkg_from_bitbucket)
 
     # exports VCPKG_HEAD_VERSION to the caller. This will get picked up by ports.cmake after the build.
     if(VCPKG_USE_HEAD_VERSION)
-        vcpkg_download_distfile(archive_version
+        z_vcpkg_download_distfile(archive_version
             URLS "https://api.bitbucket.com/2.0/repositories/${org_name}/${repo_name}/refs/branches/${arg_HEAD_REF}"
             FILENAME "${downloaded_file_name}.version"
             SKIP_SHA512
@@ -134,7 +76,7 @@ ${version_contents}
     endif()
 
     # download the file information from bitbucket.
-    vcpkg_download_distfile(archive
+    z_vcpkg_download_distfile(archive
         URLS "https://bitbucket.com/${org_name}/${repo_name}/get/${ref_to_use}.tar.gz"
         FILENAME "${downloaded_file_name}"
         ${sha512_param}
@@ -146,6 +88,11 @@ ${version_contents}
         REF "${sanitized_ref}"
         PATCHES ${arg_PATCHES}
         ${working_directory_param}
+    )
+    z_vcpkg_add_spdx_resource(
+        NAME "${arg_REPO}"
+        DOWNLOAD_LOCATION "git+https://bitbucket.com/${arg_REPO}@${ref_to_use}"
+        SHA512 "${arg_SHA512}"
     )
     set("${arg_OUT_SOURCE_PATH}" "${SOURCE_PATH}" PARENT_SCOPE)
 endfunction()

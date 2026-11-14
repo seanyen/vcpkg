@@ -1,112 +1,89 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO xianyi/OpenBLAS
-    REF 904f9a267dddb30e9f187e57231ed160ab2f2704 # v0.3.15
-    SHA512 ddb1eba7b0def08483d7610675335648017eff41de3cbe24357bd15c6938c7997f12c449f32d8225abbb5ef8f7a2e7501320ec05e970e8ddf8e4c25fd81e8002 
+    REPO OpenMathLib/OpenBLAS
+    REF "v${VERSION}"
+    SHA512 b40b5a3b5062ea196b3e48363db584ef91aef21c61becf4f4d6616ba5e413d770c22445c357d06dcf0992dd4666c18cced44cd5d09d8cb884c0d8f62e6940422
     HEAD_REF develop
     PATCHES
-        uwp.patch
-        fix-space-path.patch
-        fix-redefinition-function.patch
-        fix-uwp-build.patch
-        fix-marco-conflict.patch
-        install-tools.patch
+        disable-testing.diff
+        getarch.diff
+        system-check-msvc.diff
+        win32-uwp.diff
+        android-exclude-sme.diff
+        arm64-generic-omatcopy.diff # https://github.com/OpenMathLib/OpenBLAS/pull/5977
 )
 
-find_program(GIT NAMES git git.cmd)
-
-# sed and awk are installed with git but in a different directory
-get_filename_component(GIT_EXE_PATH "${GIT}" DIRECTORY)
-set(SED_EXE_PATH "${GIT_EXE_PATH}/../usr/bin")
-
-# openblas require perl to generate .def for exports
-vcpkg_find_acquire_program(PERL)
-get_filename_component(PERL_EXE_PATH "${PERL}" DIRECTORY)
-set(PATH_BACKUP "$ENV{PATH}")
-vcpkg_add_to_path("${PERL_EXE_PATH}")
-vcpkg_add_to_path("${SED_EXE_PATH}")
-
-vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+vcpkg_check_features(OUT_FEATURE_OPTIONS OPTIONS
     FEATURES
-        threads         USE_THREAD
-        simplethread    USE_SIMPLE_THREADED_LEVEL3
-        "dynamic-arch"  DYNAMIC_ARCH
+        threads        USE_THREAD
+        simplethread   USE_SIMPLE_THREADED_LEVEL3
+        dynamic-arch   DYNAMIC_ARCH
 )
 
-set(COMMON_OPTIONS -DBUILD_WITHOUT_LAPACK=ON)
-
-if(VCPKG_TARGET_IS_OSX)
-    if("dynamic-arch" IN_LIST FEATURES)
-        vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
-        message(STATUS "Openblas with \"dynamic-arch\" option for OSX supports only dynamic linkage. It's not a bag of openblas but bug of combination cmake+ninja+osx. See: https://gitlab.kitware.com/cmake/cmake/-/issues/16731") 
-    endif()
+# If not explicitly configured for a cross build, OpenBLAS wants to run
+# getarch executables in order to optimize for the target.
+# Adapting this to vcpkg triplets:
+# - install-getarch.diff introduces and uses GETARCH_BINARY_DIR,
+# - architecture and system name are required to match for GETARCH_BINARY_DIR, but
+# - uwp (aka WindowsStore) may run windows getarch.
+string(REPLACE "WindowsStore_" "_" SYSTEM_KEY "${VCPKG_CMAKE_SYSTEM_NAME}_${VCPKG_TARGET_ARCHITECTURE}")
+set(GETARCH_BINARY_DIR "${CURRENT_HOST_INSTALLED_DIR}/manual-tools/${PORT}/${SYSTEM_KEY}")
+if(EXISTS "${GETARCH_BINARY_DIR}")
+    message(STATUS "OpenBLAS cross build, but may use ${PORT}:${HOST_TRIPLET} getarch")
+    list(APPEND OPTIONS "-DGETARCH_BINARY_DIR=${GETARCH_BINARY_DIR}")
+elseif(VCPKG_CROSSCOMPILING)
+    message(STATUS "OpenBLAS cross build, may not be able to use getarch")
+else()
+    message(STATUS "OpenBLAS native build")
 endif()
 
-set(OPENBLAS_EXTRA_OPTIONS)
-# for UWP version, must build non uwp first for helper
-# binaries.
-if(VCPKG_TARGET_IS_UWP)    
-    list(APPEND OPENBLAS_EXTRA_OPTIONS -DCMAKE_SYSTEM_PROCESSOR=AMD64
-                "-DBLASHELPER_BINARY_DIR=${CURRENT_HOST_INSTALLED_DIR}/tools/${PORT}")
-elseif(NOT (VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW))
-    string(APPEND VCPKG_C_FLAGS " -DNEEDBUNDERSCORE") # Required to get common BLASFUNC to append extra _
-    string(APPEND VCPKG_CXX_FLAGS " -DNEEDBUNDERSCORE")
-    list(APPEND OPENBLAS_EXTRA_OPTIONS
-                -DNOFORTRAN=ON
-                -DBU=_  #required for all blas functions to append extra _ using NAME
+if(VCPKG_TARGET_IS_EMSCRIPTEN)
+    # Only the riscv64 kernel with riscv64_generic target is supported.
+    # Cf. https://github.com/OpenMathLib/OpenBLAS/issues/3640#issuecomment-1144029630 et al.
+    list(APPEND OPTIONS
+        -DEMSCRIPTEN_SYSTEM_PROCESSOR=riscv64
+        -DTARGET=RISCV64_GENERIC
     )
 endif()
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        ${FEATURE_OPTIONS}
-        ${COMMON_OPTIONS}
-        ${OPENBLAS_EXTRA_OPTIONS}
+        ${OPTIONS}
+        "-DCMAKE_PROJECT_INCLUDE=${CURRENT_PORT_DIR}/cmake-project-include.cmake"
+        -DBUILD_TESTING=OFF
+        -DBUILD_WITHOUT_LAPACK=ON
+        -DNOFORTRAN=ON
+    MAYBE_UNUSED_VARIABLES
+        GETARCH_BINARY_DIR
 )
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/OpenBLAS)
 
-vcpkg_cmake_config_fixup(CONFIG_PATH share/cmake/OpenBLAS)
+#fix for libm linking on non-windows platforms
+if(NOT VCPKG_TARGET_IS_WINDOWS)
+    foreach(PCFILE IN ITEMS
+        "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/openblas.pc"
+        "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/openblas.pc")
+        if(EXISTS "${PCFILE}")
+            file(APPEND "${PCFILE}" "Libs.private: -lm\n")
+        endif()
+    endforeach()
+endif()
 
-if (EXISTS "${CURRENT_PACKAGES_DIR}/bin/getarch${VCPKG_HOST_EXECUTABLE_SUFFIX}")
-    vcpkg_copy_tools(TOOL_NAMES getarch AUTO_CLEAN)
-endif()
-if (EXISTS "${CURRENT_PACKAGES_DIR}/bin/getarch_2nd${VCPKG_HOST_EXECUTABLE_SUFFIX}")
-    vcpkg_copy_tools(TOOL_NAMES getarch_2nd AUTO_CLEAN)
-endif()
-
-set(ENV{PATH} "${PATH_BACKUP}")
-
-set(pcfile "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/openblas.pc")
-if(EXISTS "${pcfile}")
-    file(READ "${pcfile}" _contents)
-    set(_contents "prefix=${CURRENT_INSTALLED_DIR}\n${_contents}")
-    file(WRITE "${pcfile}" "${_contents}")
-    #file(CREATE_LINK "${pcfile}" "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/blas.pc" COPY_ON_ERROR)
-endif()
-set(pcfile "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/openblas.pc")
-if(EXISTS "${pcfile}")
-    file(READ "${pcfile}" _contents)
-    set(_contents "prefix=${CURRENT_INSTALLED_DIR}/debug\n${_contents}")
-    file(WRITE "${pcfile}" "${_contents}")
-    #file(CREATE_LINK "${pcfile}" "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/blas.pc" COPY_ON_ERROR)
-endif()
 vcpkg_fixup_pkgconfig()
-#maybe we need also to write a wrapper inside share/blas to search implicitly for openblas, whenever we feel it's ready for its own -config.cmake file
 
-# openblas do not make the config file , so I manually made this
-# but I think in most case, libraries will not include these files, they define their own used function prototypes
-# this is only to quite vcpkg
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/openblas_common.h" DESTINATION "${CURRENT_PACKAGES_DIR}/include")
-
-vcpkg_replace_string(
-    "${SOURCE_PATH}/cblas.h"
-    "#include \"common.h\""
-    "#include \"openblas_common.h\""
-)
+# Required from native builds, optional from cross builds.
+if(NOT VCPKG_CROSSCOMPILING OR EXISTS "${CURRENT_PACKAGES_DIR}/bin/getarch${VCPKG_TARGET_EXECUTABLE_SUFFIX}")
+    vcpkg_copy_tools(
+        TOOL_NAMES getarch getarch_2nd
+        DESTINATION "${CURRENT_PACKAGES_DIR}/manual-tools/${PORT}/${SYSTEM_KEY}"
+        AUTO_CLEAN
+    )
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

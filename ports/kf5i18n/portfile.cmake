@@ -5,15 +5,16 @@ endif()
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/ki18n
-    REF v5.88.0
-    SHA512 211b7dd18f5063908042e418ede0845fb3fe1a4ef42a3a1e0e31c118fddfb5e59408a49ba37bde445b5adf85b0c3f75a346391fb3e960d6eb703b760083ec6f5
+    REF "v${VERSION}"
+    SHA512 418aee5a836fcdb7a8901282c256e8bdb3ff1f1f346c882feb548b9ef39951ff1709dd2ac924e281441d86c7744e086ca82178f952dbb24173aab910d336d7e4
+    HEAD_REF master
     PATCHES ${PATCHES}
 )
 
 vcpkg_find_acquire_program(PYTHON3)
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -25,7 +26,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5I18n CONFIG_PATH lib/cmake/KF5I18n)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5I18n)
 vcpkg_copy_pdbs()
 
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
@@ -35,5 +36,17 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})
 
+# The following pattern has an absolute path, but is still ultimately relocatable, so skip absolute paths check:
+# share\KF5I18n\KF5I18nMacros.cmake
+# # The Python executable used for building ki18n will be used as a fallback
+# # solution if it cannot be found in $PATH when building applications.
+# set(_KI18N_PYTHON_EXECUTABLE "C:/Dev/vcpkg-downloads/tools/python/python-3.10.7-x64/python.exe")
+#
+# find_program(KI18N_PYTHON_EXECUTABLE NAMES python3 python2 python)
+# if(NOT KI18N_PYTHON_EXECUTABLE)
+#     set(KI18N_PYTHON_EXECUTABLE "${_KI18N_PYTHON_EXECUTABLE}")
+# endif()
+set(VCPKG_POLICY_SKIP_ABSOLUTE_PATHS_CHECK enabled)

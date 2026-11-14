@@ -1,16 +1,26 @@
-# UWP is not supported
-vcpkg_fail_port_install(ON_TARGET "uwp")
-
 vcpkg_download_distfile(ARCHIVE
-    URLS "http://dev-www.libreoffice.org/src/cppunit-1.15.1.tar.gz"
+    URLS "https://dev-www.libreoffice.org/src/cppunit-1.15.1.tar.gz"
     FILENAME "cppunit-1.15.1.tar.gz"
     SHA512 0feb47faec451357bb4c4e287efa17bb60fd3ad966d5350e9f25b414aaab79e94921024b0c0497672f8d3eeb22a599213d2d71d9e1d28b243b3e37f3a9a43691
 )
 
-vcpkg_extract_source_archive_ex(
-    OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE "${ARCHIVE}"
-)
+if(VCPKG_TARGET_IS_WINDOWS)
+    set(CPPUNIT_PATCHES
+        fix-cppunit-pc-target.patch
+    )
+
+    vcpkg_extract_source_archive(
+        SOURCE_PATH
+        ARCHIVE "${ARCHIVE}"
+        PATCHES
+            ${CPPUNIT_PATCHES}
+    )
+else()
+    vcpkg_extract_source_archive(
+        SOURCE_PATH
+        ARCHIVE "${ARCHIVE}"
+    )
+endif()
 
 if(VCPKG_TARGET_IS_WINDOWS)
     # Use a simple CMakeLists.txt to build CppUnit on windows
@@ -18,6 +28,8 @@ if(VCPKG_TARGET_IS_WINDOWS)
 
     vcpkg_cmake_configure(
         SOURCE_PATH "${SOURCE_PATH}"
+        OPTIONS
+            "-DCPPUNIT_VERSION=${VERSION}"
     )
 
     vcpkg_cmake_install()
@@ -34,9 +46,9 @@ else()
         set(LINKAGE_STATIC yes)
     endif()
 
-    vcpkg_configure_make(
+    vcpkg_make_configure(
         SOURCE_PATH ${SOURCE_PATH}
-        AUTOCONFIG
+        AUTORECONF
         OPTIONS
             "--enable-shared=${LINKAGE_DYNAMIC}"
             "--enable-static=${LINKAGE_STATIC}"
@@ -46,7 +58,7 @@ else()
             "--enable-debug"
     )
 
-    vcpkg_install_make()
+    vcpkg_make_install()
 endif()
 
 vcpkg_copy_pdbs()

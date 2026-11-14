@@ -1,9 +1,23 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libtcod/libtcod
-    REF 1.19.0
-    SHA512 462c3deadaeaaf3adb44427d41c4e8c1acc2c37ef90677d8d60e8194f9c190bc7e02b0cf2b285e248171354f8d73f1dd28144cfe8a98a469e1071448bce9e68b
-    HEAD_REF develop
+    REF "${VERSION}"
+    SHA512 7fd6643f09467d9f4f446982c37352520f2edf7593a00f39e8ee35b6e2bc2daed4caa295f083c62a740cf8553e7fb338b479dbdab7632f2365e184291f24c7b1
+    HEAD_REF main
+)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        "png" LIBTCOD_LODEPNG
+        "png" VCPKG_LOCK_FIND_PACKAGE_lodepng-c
+        "sdl" LIBTCOD_SDL3
+        "sdl" VCPKG_LOCK_FIND_PACKAGE_SDL3
+        "threads" LIBTCOD_THREADS
+        "threads" VCPKG_LOCK_FIND_PACKAGE_Threads
+        "unicode" LIBTCOD_UTF8PROC
+        "unicode" VCPKG_LOCK_FIND_PACKAGE_utf8proc
+        "zlib" LIBTCOD_ZLIB
+        "zlib" VCPKG_LOCK_FIND_PACKAGE_ZLIB
 )
 
 vcpkg_cmake_configure(
@@ -11,15 +25,18 @@ vcpkg_cmake_configure(
     OPTIONS
         ${FEATURE_OPTIONS}
         -DCMAKE_INSTALL_INCLUDEDIR=${CURRENT_PACKAGES_DIR}/include
-        -DLIBTCOD_SDL2=find_package
-        -DLIBTCOD_ZLIB=find_package
-        -DLIBTCOD_GLAD=find_package
-        -DLIBTCOD_LODEPNG=find_package
-        -DLIBTCOD_UTF8PROC=vcpkg
-        -DLIBTCOD_STB=vcpkg
+        -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+        -DVCPKG_LOCK_FIND_PACKAGE_Stb=ON
+    MAYBE_UNUSED_VARIABLES
+        VCPKG_LOCK_FIND_PACKAGE_SDL3
+        VCPKG_LOCK_FIND_PACKAGE_Threads
+        VCPKG_LOCK_FIND_PACKAGE_ZLIB
+        VCPKG_LOCK_FIND_PACKAGE_lodepng-c
+        VCPKG_LOCK_FIND_PACKAGE_utf8proc
 )
 
 vcpkg_cmake_install()
+vcpkg_fixup_pkgconfig()
 
 vcpkg_copy_pdbs()
 

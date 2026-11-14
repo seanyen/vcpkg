@@ -1,36 +1,59 @@
-if (NOT VCPKG_TARGET_IS_WINDOWS)
+if(NOT VCPKG_TARGET_IS_WINDOWS)
     vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 endif()
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO abseil/abseil-cpp
-    REF 278e0a071885a22dcd2fd1b5576cc44757299343 #LTS 20210324, Patch 2
-    SHA512 a9e8e9169ebcfb8bc2eca28152ad2f655f48e6281ea932eb712333f3d0aa0b6fa1a9b184f3e2ddd75d932a54b501cc5c7bb29a1c9de5d2146f82fc5754653895
+    REF "${VERSION}"
+    SHA512 f5012885d6b6844a9cf5ed92ad5468b8757db33dfe1364bfb232fff928e06c550c7eb4557f45186a8ac4d18b178df9be267681abab4a6de40823b574afbe9960
     HEAD_REF master
-    PATCHES
-        # in C++17 mode, use std::any, std::optional, std::string_view, std::variant
-        # instead of the library replacement types
-        # in C++11 mode, force use of library replacement types, otherwise the automatic
-        # detection can cause ABI issues depending on which compiler options
-        # are enabled for consuming user code
-        fix-cxx-standard.patch
-        fix-32-bit-arm.patch
+    PATCHES 
+        003-force-cxx-17.patch
+        fix-heterogeneous_lookup_testing-target.patch
+        fix-mingw-dll.patch
+        fix-gcc13-constexpr-function-pointer.patch
 )
 
-vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
-    FEATURES
-        cxx17 ABSL_USE_CXX17
-)
 
+set(ABSL_STATIC_RUNTIME_OPTION "")
+if(VCPKG_TARGET_IS_WINDOWS AND VCPKG_CRT_LINKAGE STREQUAL "static")
+    set(ABSL_STATIC_RUNTIME_OPTION "-DABSL_MSVC_STATIC_RUNTIME=ON")
+endif()
+
+set(ABSL_MINGW_OPTIONS "")
+if(VCPKG_TARGET_IS_MINGW)
+    # LIBRT-NOTFOUND is needed since the system librt may be found by cmake in
+    # a cross-compile setup.
+    # See https://github.com/pywinrt/pywinrt/pull/83 for the FIReference
+    # definition issue.
+    set(ABSL_MINGW_OPTIONS "-DLIBRT=LIBRT-NOTFOUND"
+        "-DCMAKE_CXX_FLAGS=-D____FIReference_1_boolean_INTERFACE_DEFINED__")
+    # Specify ABSL_BUILD_MONOLITHIC_SHARED_LIBS=ON when VCPKG_LIBRARY_LINKAGE is dynamic to match Abseil's Windows (MSVC) defaults
+    if(VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+        vcpkg_list(APPEND ABSL_MINGW_OPTIONS "-DABSL_BUILD_MONOLITHIC_SHARED_LIBS=ON")
+    endif()
+endif()
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    DISABLE_PARALLEL_CONFIGURE
-    OPTIONS ${FEATURE_OPTIONS}
+    OPTIONS
+        -DABSL_PROPAGATE_CXX_STD=ON
+        -DABSL_BUILD_TESTING=OFF 
+        -DABSL_BUILD_TEST_HELPERS=OFF
+        ${ABSL_TEST_HELPERS_OPTIONS}
+        ${ABSL_STATIC_RUNTIME_OPTION}
+        ${ABSL_MINGW_OPTIONS}
 )
 
 vcpkg_cmake_install()
 vcpkg_cmake_config_fixup(PACKAGE_NAME absl CONFIG_PATH lib/cmake/absl)
+
+if(VCPKG_TARGET_IS_IOS OR VCPKG_TARGET_IS_OSX)
+    file(APPEND "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/absl_time.pc" "Libs.private: -framework CoreFoundation\n")
+    if(NOT VCPKG_BUILD_TYPE)
+        file(APPEND "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/absl_time.pc" "Libs.private: -framework CoreFoundation\n")
+    endif()
+endif()
 vcpkg_fixup_pkgconfig()
 
 vcpkg_copy_pdbs()
@@ -41,16 +64,9 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share"
                     "${CURRENT_PACKAGES_DIR}/include/absl/time/internal/cctz/testdata"
 )
 
-if (VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
-    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/absl/base/config.h"
-        "#elif defined(ABSL_CONSUME_DLL)" "#elif 1"
-    )
-    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/absl/base/internal/thread_identity.h"
-        "&& !defined(ABSL_CONSUME_DLL)" "&& 0"
-    )
-    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/absl/container/internal/hashtablez_sampler.h"
-        "!defined(ABSL_CONSUME_DLL)" "0"
-    )
+if(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/absl/base/config.h" "defined(ABSL_CONSUME_DLL)" "1")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/absl/base/internal/thread_identity.h" "defined(ABSL_CONSUME_DLL)" "1")
 endif()
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

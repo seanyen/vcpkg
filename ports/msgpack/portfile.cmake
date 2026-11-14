@@ -5,35 +5,30 @@ endif()
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO msgpack/msgpack-c
-    REF cpp-3.3.0
-    SHA512 33ed87b23d776cadcc230666e6435088e402c5813e7e4dce5ce79c8c3aceba5a36db8f395278042c6ac44c474b33018ff1635889d8b20bc41c5f6f1d1c963cae
-    HEAD_REF master
+    REF cpp-${VERSION}
+    SHA512 2501fc1ec9a52614ae86210545ecc8ae4b36e055018cd6bfca6543503d3c17b6a84e464c9136c881fb32bc6464cea5b38c7cc2c44c84c173f67a612cc220a2c6
+    HEAD_REF cpp_master
 )
 
-if(VCPKG_LIBRARY_LINKAGE STREQUAL static)
-    set(MSGPACK_ENABLE_SHARED OFF)
-    set(MSGPACK_ENABLE_STATIC ON)
-else()
-    set(MSGPACK_ENABLE_SHARED ON)
-    set(MSGPACK_ENABLE_STATIC OFF)
-endif()
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        boost MSGPACK_USE_BOOST
+)
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DMSGPACK_ENABLE_SHARED=${MSGPACK_ENABLE_SHARED}
-        -DMSGPACK_ENABLE_STATIC=${MSGPACK_ENABLE_STATIC}
         -DMSGPACK_BUILD_EXAMPLES=OFF
-        -DMSGPACK_BUILD_TESTS=OFF)
+        -DMSGPACK_BUILD_TESTS=OFF
+        -DMSGPACK_BUILD_DOCS=OFF
+        ${FEATURE_OPTIONS}
+)
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/msgpack)
+vcpkg_cmake_config_fixup(PACKAGE_NAME msgpack-cxx CONFIG_PATH lib/cmake/msgpack-cxx)
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib")
 
-file(COPY ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/msgpack)
-file(RENAME ${CURRENT_PACKAGES_DIR}/share/msgpack/COPYING ${CURRENT_PACKAGES_DIR}/share/msgpack/copyright)
-
-vcpkg_fixup_pkgconfig()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

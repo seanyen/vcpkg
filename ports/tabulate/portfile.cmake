@@ -1,26 +1,28 @@
-# header-only library
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO p-ranav/tabulate
-    REF 8f7a31b58806384b755858fe5e69593f9f216ed0
-    SHA512 33a51617d363f9e8eed2153f60c5a087ed84edaeb21a0bc779d0af6228d4d7deb211e03c1eb7c8d56ac538de6a1cc0b641d219b4ff95d277f3daa7762f64a8f6
+    REF "v${VERSION}"
+    SHA512 bebea94c524e905332a05f58117074ef3897e8c3cfd15dc297098549acaca79778b3648cc6bd30f298328b7805429d7f41642a75b9dbc725e3a37058ccf5660a
     HEAD_REF master
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -Dtabulate_BUILD_TESTS=OFF
         -DSAMPLES=OFF
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/${PORT})
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug ${CURRENT_PACKAGES_DIR}/lib)
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug"
+    "${CURRENT_PACKAGES_DIR}/lib"
+)
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-file(INSTALL ${SOURCE_PATH}/LICENSE.termcolor DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/LICENSE"
+    "${SOURCE_PATH}/LICENSE.termcolor"
+)

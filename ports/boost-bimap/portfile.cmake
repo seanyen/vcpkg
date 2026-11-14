@@ -3,10 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/bimap
-    REF boost-1.77.0
-    SHA512 bbb6c21d7678f49dcba4ad27d873a02a026751385a0e98633b17651183b2b25c541d18fc6ad703d8b1298137b770bdf4cc46e808c45083650f3c2db2a2d1bb28
+    REF boost-${VERSION}
+    SHA512 ed50dc1b5394e9b23579d09b1734b10a9b837eab1d6550f40b2279712cd6118f2f1c767882bc61edbd38c85ccb0b91d76456448e2ff722a4aa69d5bf4748be8b
     HEAD_REF master
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

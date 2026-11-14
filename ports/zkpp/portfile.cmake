@@ -1,5 +1,3 @@
-vcpkg_fail_port_install(ON_TARGET "Windows")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO tgockel/zookeeper-cpp
@@ -14,15 +12,13 @@ if (NOT "${test_files}" STREQUAL "")
 	file(REMOVE ${test_files})
 endif()
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
 )
-
-vcpkg_install_cmake()
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-
-vcpkg_fixup_cmake_targets()
+vcpkg_cmake_install()
 vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup()
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

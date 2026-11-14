@@ -1,22 +1,23 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO nholthaus/units
-    REF v2.3.1
-    SHA512 1ec9e4d7d60f073ad82a02116f16b9dda57406a3b22a5b06d34f9e5a4df8fd20cc28fc7acfd8fc33054718e0efca3973df0424563f7e1833687a6c1696b9c340
+    REF v${VERSION}
+    SHA512 69fe6641c465c3a9a675babc3c63c4097c1137f7e893eb06ec3687f60fecd9df0731dbc5e3414e3192b5b90c771a8ec6096c5386f57f29e72156dedce6e39306
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA # Disable this option if project cannot be built with Ninja
-    OPTIONS -DBUILD_TESTS=OFF
+set(VCPKG_BUILD_TYPE "release")
+
+# units is header-only. Turning tests off also turns the examples off (they follow UNITS_BUILD_TESTS), so the
+# configure step compiles nothing and the install stages only the header tree and the CMake package files.
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DUNITS_BUILD_TESTS=OFF
+        -DUNITS_BUILD_EXAMPLES=OFF
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/units)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib") # header-only: no libraries, only the CMake config moved above
 
-# Handle copyright/readme/package files
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-file(INSTALL ${SOURCE_PATH}/README.md DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
-
-# remove uneeded directories
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/cmake)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

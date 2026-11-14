@@ -1,11 +1,29 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO CrowCpp/crow
-    REF a166a6d3cb08b10e9b00b57fd2216b9c4329d4e6 #0.3+3
-    SHA512 5a32f66c96376c9c17f82492a7bc6f77417aa9dd808c082a2aeae983d05e895c27c2a01c46f8b5fdf9d30267ad14e8ba64a629ba354dce6ce0f7a2ff5d0a7fb2
-    FILE_DISAMBIGUATOR 1
+    REF "v${VERSION}"
+    SHA512 08f8fbd6d8201ef905723f7ef57de411ca09f158c8171c2bc46a0cf202d0e5af84ff588b03b03ade80409cf7cc8c6b6d7ad883831cb1a05e881d52fe1b90fca8
     HEAD_REF master
+    PATCHES remove-cpm.patch
 )
 
-file(INSTALL "${SOURCE_PATH}/include/" DESTINATION "${CURRENT_PACKAGES_DIR}/include")
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DCROW_BUILD_EXAMPLES=OFF
+        -DCROW_BUILD_TESTS=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_Python3=ON
+)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/Crow)
+
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug"
+    "${CURRENT_PACKAGES_DIR}/lib"
+)
+
+vcpkg_install_copyright(
+    FILE_LIST
+        "${SOURCE_PATH}/LICENSE"
+        "${SOURCE_PATH}/README.md"
+)

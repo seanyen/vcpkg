@@ -1,4 +1,3 @@
-vcpkg_fail_port_install(ON_TARGET "Windows")
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Maratyszcza/nnpack
@@ -8,17 +7,19 @@ vcpkg_from_github(
         fix-cmakelists.patch
 )
 
-vcpkg_configure_cmake(
+vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
     OPTIONS
         -DNNPACK_BACKEND=psimd
         -DNNPACK_BUILD_TESTS=OFF
         -DNNPACK_BUILD_BENCHMARKS=OFF
         -DNNPACK_CUSTOM_THREADPOOL=OFF
-)
-vcpkg_install_cmake()
-vcpkg_copy_pdbs()
+    MAYBE_UNUSED_VARIABLES
+        NNPACK_BUILD_BENCHMARKS
 
+)
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(PACKAGE_NAME unofficial-${PORT})
 file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
 file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)

@@ -1,13 +1,11 @@
-vcpkg_fail_port_install(ON_TARGET "uwp")
-
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ArthurSonzogni/FTXUI
-    REF 3d5e4eb6ca11a0827bff68a04f4bf68ca9820e20
-    SHA512 670b0e5d95f7e6132ca7115005efdb1dee645146af82566af3e48bfff64d82dbc058c2f524b8b9d1d92182e4835ff6024067f0eab8dd6204514efa0207b3d33c
-    HEAD_REF master
+    REF "v${VERSION}"
+    SHA512 62b8128f494b235d99f3802150616e3489623cf763abec1a87c30c577f205dd47fd3ef05961239f13c991194169e764430928f53e3dfced85df05c859e47f3db
+    HEAD_REF main
 )
 
 vcpkg_cmake_configure(
@@ -23,6 +21,8 @@ vcpkg_cmake_install()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
 
+vcpkg_fixup_pkgconfig()
+
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

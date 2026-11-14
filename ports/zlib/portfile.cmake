@@ -1,56 +1,63 @@
-set(VERSION 1.2.11)
-
-vcpkg_download_distfile(ARCHIVE_FILE
-    URLS "https://www.zlib.net/zlib-${VERSION}.tar.gz" "https://downloads.sourceforge.net/project/libpng/zlib/${VERSION}/zlib-${VERSION}.tar.gz"
-    FILENAME "zlib1211.tar.gz"
-    SHA512 73fd3fff4adeccd4894084c15ddac89890cd10ef105dd5e1835e1e9bbb6a49ff229713bd197d203edfa17c2727700fce65a2a235f07568212d820dca88b528ae
-)
-
-vcpkg_extract_source_archive_ex(
+# When this port is updated, the minizip port should be updated at the same time
+vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE_FILE}
-    REF ${VERSION}
+    REPO madler/zlib
+    REF v${VERSION}
+    SHA512 67f3ce120210a69aa05cece6f76d5f45b50d947c095169f0d699732d0182d7d04aec1af56a3fc6bbcc2af91a57e099cd73980b17f7d96ad90aeabbeaafbf1cbc
+    HEAD_REF master
     PATCHES
-        "cmake_dont_build_more_than_needed.patch"
-        "0001-Prevent-invalid-inclusions-when-HAVE_-is-set-to-0.patch"
-        "add_debug_postfix_on_mingw.patch"
-        "0002-android-build-mingw.patch"
+        0001-no-version-script-on-ohos.patch
 )
 
-# This is generated during the cmake build
-file(REMOVE ${SOURCE_PATH}/zconf.h)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" ZLIB_BUILD_SHARED)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" ZLIB_BUILD_STATIC)
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DSKIP_INSTALL_FILES=ON
-        -DSKIP_BUILD_EXAMPLES=ON
-    OPTIONS_DEBUG
-        -DSKIP_INSTALL_HEADERS=ON
+        -DZLIB_BUILD_TESTING=OFF
+        -DZLIB_BUILD_SHARED=${ZLIB_BUILD_SHARED}
+        -DZLIB_BUILD_STATIC=${ZLIB_BUILD_STATIC}
 )
 
-vcpkg_install_cmake()
-file(INSTALL ${CMAKE_CURRENT_LIST_DIR}/vcpkg-cmake-wrapper.cmake DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
-
-# Install the pkgconfig file
-if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-    if(VCPKG_TARGET_IS_WINDOWS)
-        vcpkg_replace_string(${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/zlib.pc "-lz" "-lzlib")
-    endif()
-    file(COPY ${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/zlib.pc DESTINATION ${CURRENT_PACKAGES_DIR}/lib/pkgconfig)
-endif()
-if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-    if(VCPKG_TARGET_IS_WINDOWS)
-        vcpkg_replace_string(${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-dbg/zlib.pc "-lz" "-lzlibd")
-    endif()
-    file(COPY ${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-dbg/zlib.pc DESTINATION ${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig)
-endif()
-
+vcpkg_cmake_install()
+vcpkg_copy_pdbs()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/zlib")
 vcpkg_fixup_pkgconfig()
 
-file(INSTALL ${CMAKE_CURRENT_LIST_DIR}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+if(VCPKG_TARGET_IS_WINDOWS)
+    if(NOT VCPKG_TARGET_IS_MINGW)
+        set(_rewrite_lib_prefix "lib")
+    endif()
 
-vcpkg_copy_pdbs()
+    if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+        vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/zlib.pc" " -lz" " -l${_rewrite_lib_prefix}zs")
+    else()
+        vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/zlib.pc" " -lz" " -l${_rewrite_lib_prefix}z")
+    endif()
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/usage DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT})
+    if(NOT VCPKG_BUILD_TYPE)
+        if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+            vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/zlib.pc" " -lz" " -l${_rewrite_lib_prefix}zsd")
+        else()
+            vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/zlib.pc" " -lz" " -l${_rewrite_lib_prefix}zd")
+        endif()
+    endif()
+endif()
+
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/zconf.h" "ifdef ZLIB_DLL" "if 0")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/zlib/ZLIBConfig.cmake" [[_ZLIB_supported_components "shared" "static"]] [[_ZLIB_supported_components "static"]])
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/zlib/ZLIBConfig.cmake" [[if(NOT TARGET ZLIB::ZLIB)]] [[IF(FALSE)]])
+else()
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/zconf.h" "ifdef ZLIB_DLL" "if 1")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/zlib/ZLIBConfig.cmake" [[_ZLIB_supported_components "shared" "static"]] [[_ZLIB_supported_components "shared"]])
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/zlib/ZLIBConfig.cmake" [[if(NOT TARGET ZLIB::ZLIBSTATIC)]] [[IF(FALSE)]])
+endif()
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/vcpkg-cmake-wrapper.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

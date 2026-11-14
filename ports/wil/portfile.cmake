@@ -2,10 +2,15 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Microsoft/wil
-    REF 5a21cac10640f54b7ef886031f4d9ed427bef4c5
-    SHA512 b1a6703dd75eee66f81c54bb5c01bc9acc7354c113fd556afb2dd95361db7e9f94c9e958d9a0b897359084c9c08cb725bbe214fdaccf2e662c1ca4aa73c3345a
+    REF "v${VERSION}"
+    SHA512 0ee05a1beccf17478a34f5c9251a9291b98584e87f113dbeff8cb0466ca53dc60740a4dc961d67bbe3cf77181571cf76d3f204070fa46cd6f3a595305ffe7700
     HEAD_REF master
+    PATCHES
+        cpp14.patch
 )
+
+# WIL is header-only, so we don't need to build it in both modes
+set(VCPKG_BUILD_TYPE release)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -17,9 +22,11 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH share/cmake/WIL)
-# Remove this line in the next update
-file(RENAME "${CURRENT_PACKAGES_DIR}/share/${PORT}/WIL-config.cmake" "${CURRENT_PACKAGES_DIR}/share/${PORT}/wilConfig.cmake")
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+# Install natvis files
+file(INSTALL "${SOURCE_PATH}/natvis/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/natvis")
+
+# Install copyright
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

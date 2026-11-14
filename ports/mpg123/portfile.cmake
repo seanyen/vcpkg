@@ -1,27 +1,42 @@
-set(MPG123_VERSION 1.29.2)
-set(MPG123_HASH ffb82ffbebedeb12783338b5159bf055afd25cb77e1b705bef29f04fa50bcb2ceaf2a6418d0e111fab1151ea956fe48ba3576d978e6b0c8f4ca72c3883608ec0)
-
 vcpkg_from_sourceforge(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO mpg123/mpg123
-    REF ${MPG123_VERSION}
-    FILENAME "mpg123-${MPG123_VERSION}.tar.bz2"
-    SHA512 ${MPG123_HASH}
-    PATCHES no-executables.patch
+    REF "${VERSION}"
+    FILENAME "mpg123-${VERSION}.tar.bz2"
+    SHA512 694743802bb7be0f4a39bf62e681ae0bfed769cb87dc6c5b6fb5f9245966631efb5c5b9bd58588f7af55ced5d020f97c8a54993e71b5295bc45ebd152473f40e
+    PATCHES
+        have-fpu.diff
+        pkgconfig.diff
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/yasm-tool-helper/yasm-tool-helper.cmake)
-yasm_tool_helper(APPEND_TO_PATH)
+if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
+    yasm_tool_helper(APPEND_TO_PATH)
+endif()
+
+vcpkg_list(SET options)
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_list(APPEND options "-DLIBMPG123_LIBS=-lshlwapi")
+endif()
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}/ports/cmake
-    OPTIONS -DUSE_MODULES=OFF
+    SOURCE_PATH "${SOURCE_PATH}/ports/cmake"
+    OPTIONS
+        -DUSE_MODULES=OFF
+        -DBUILD_PROGRAMS=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_ALSA=ON
+        -DCMAKE_DISABLE_FIND_PACKAGE_PkgConfig=ON
+        ${options}
+    MAYBE_UNUSED_VARIABLES
+        BUILD_PROGRAMS
+        CMAKE_DISABLE_FIND_PACKAGE_ALSA
+        CMAKE_DISABLE_FIND_PACKAGE_PkgConfig
 )
 vcpkg_cmake_install()
+vcpkg_copy_pdbs()
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
 vcpkg_fixup_pkgconfig()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

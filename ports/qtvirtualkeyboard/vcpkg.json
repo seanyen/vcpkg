@@ -1,8 +1,9 @@
 {
   "name": "qtvirtualkeyboard",
-  "version-semver": "6.2.2",
-  "description": "SCXML (state machine notation) compiler and related tools",
-  "homepage": "https://www.qt.io/",
+  "version": "6.11.3",
+  "description": "The Qt Virtual Keyboard project provides an input framework and reference keyboard frontend for Qt 6 on Linux Desktop/X11, Windows Desktop, and Boot2Qt targets.",
+  "homepage": "https://www.qt.io",
+  "license": null,
   "dependencies": [
     {
       "name": "qtbase",
@@ -21,27 +22,14 @@
     }
   ],
   "default-features": [
-    "default-features",
     "hunspell"
   ],
   "features": {
-    "default-features": {
-      "description": "Platform-dependent default features"
-    },
     "hunspell": {
       "description": "Use hunspell",
       "dependencies": [
         "hunspell"
       ]
-    },
-    "t9write": {
-      "description": "T9Write handwriting (commercial SDK requires port overlay)",
-      "dependencies": [
-        "t9write"
-      ]
-    },
-    "xcb": {
-      "description": "XCB integration"
     }
   }
 }

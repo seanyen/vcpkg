@@ -1,15 +1,16 @@
-vcpkg_fail_port_install(ON_TARGET "windows" "uwp")
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO pytorch/tensorpipe
-    REF c5a21994bc766659f7f85edb75478e13f429f46c
-    SHA512 05a3989286610edea2f0fcfb9197c563e947f0386f2b52110dd060053d68b62477fcd4778a45a3030b9a53b6ceccead91e4dd96c9f0153023e97414459fbd8dd
+    REF 2b4cd91092d335a697416b2a3cb398283246849d
+    SHA512 dc0cde133604329cee4690a77a14aafa74884cf1f0afe33f7a97caf74826bad907ebd7631cdd3e733e213682d00a82b66fd53a23aff9d46cb6612d17a8b2fb01
     PATCHES
-        fix-cmakelists.patch
+        "${INSTALL_PACKAGE_CONFIG_PATCH}"
+        support-find-package.patch
+        use-vcpkg.patch
         support-test.patch
-        support-pybind11.patch
+        fix-missing-cstdint.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
@@ -26,7 +27,7 @@ if("pybind11" IN_LIST FEATURES)
 endif()
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         ${FEATURE_OPTIONS}
         -DTP_ENABLE_SHM=${VCPKG_TARGET_IS_LINUX}
@@ -34,12 +35,15 @@ vcpkg_cmake_configure(
         -DTP_ENABLE_CMA=OFF
         -DTP_BUILD_LIBUV=OFF # will use libuv package
         -DTP_ENABLE_CUDA_GDR=OFF
+    MAYBE_UNUSED_VARIABLES
+        TP_ENABLE_CUDA_GDR
+        TP_ENABLE_CUDA_IPC
 )
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
-vcpkg_cmake_config_fixup()
+vcpkg_cmake_config_fixup(CONFIG_PATH "share/cmake/unofficial-tensorpipe" PACKAGE_NAME "unofficial-tensorpipe")
 
-file(INSTALL ${SOURCE_PATH}/LICENSE.txt DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include
-                    ${CURRENT_PACKAGES_DIR}/debug/share
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include"
+                    "${CURRENT_PACKAGES_DIR}/debug/share"
 )

@@ -1,9 +1,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO baylej/tmx
-    REF tmx_1.2.0
+    REF "tmx_${VERSION}"
     HEAD_REF master
-    SHA512 cb29c67af560a1844e798d3fe2677a6b71866943b233c0700212b91de35f252a0a465c33911a2c432aa54be309e3ac10770bc95c6450227e39abe049c1fbbdd1
+    SHA512 3f91faa711ad35ba0a46ae7a6e15f11928340e2d05c1202ef05cd8e9e08ce62d4ef6ef7bd743ca18fed3cab12af3201090bf556a2929ece3f010112728351577
 )
 
 vcpkg_cmake_configure(
@@ -13,9 +13,7 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 
-file(RENAME "${CURRENT_PACKAGES_DIR}/lib/cmake/tmx/tmxExports.cmake" "${CURRENT_PACKAGES_DIR}/lib/cmake/tmx/tmxTargets.cmake")
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/tmx)
-file(RENAME "${CURRENT_PACKAGES_DIR}/share/tmx/tmxTargets.cmake" "${CURRENT_PACKAGES_DIR}/share/tmx/tmxExports.cmake")
 
 file(REMOVE_RECURSE
     "${CURRENT_PACKAGES_DIR}/debug/include"

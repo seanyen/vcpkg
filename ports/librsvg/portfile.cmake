@@ -1,33 +1,34 @@
 # port update requires rust/cargo
 
-vcpkg_download_distfile(ARCHIVE
-    URLS "https://download.gnome.org/sources/librsvg/2.40/librsvg-2.40.20.tar.xz"
-    FILENAME "librsvg-2.40.20.tar.xz"
-    SHA512 cdd8224deb4c3786e29f48ed02c32ed9dff5cb15aba574a5ef845801ad3669cfcc3eedb9d359c22213dc7a29de24c363248825adad5877c40abf73b3688ff12f
-)
+string(REGEX REPLACE "^([0-9]*[.][0-9]*)[.].*" "\\1" MAJOR_MINOR "${VERSION}")
 
-vcpkg_extract_source_archive_ex(
+# NOTE: Using GitHub mirror to avoid Anubis check failure on GNOME GitLab
+# https://github.com/microsoft/vcpkg/issues/48350
+vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE}
+    REPO GNOME/librsvg
+    REF librsvg-gtk-${VERSION}
+    SHA512 1fe06d7e745a53f3aee7b1942f7551c5716ec6abf328fa395006a7aede9f4ef242d604d5f8069c397d86ec3ac095daf49b18b2b34abc67fdcd4a113207fd6a96
+    HEAD_REF master # branch name
+    PATCHES
+        fix-libxml2-2.13.5.patch
+        meson-pkgconfig-and-def-file.patch
 )
 
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
-configure_file("${CMAKE_CURRENT_LIST_DIR}/config.h.linux" "${SOURCE_PATH}/config.h.linux" COPYONLY)
-
-vcpkg_find_acquire_program(PKGCONFIG)
-vcpkg_cmake_configure(
+vcpkg_configure_meson(
     SOURCE_PATH "${SOURCE_PATH}"
-    DISABLE_PARALLEL_CONFIGURE 
     OPTIONS
-        -DPKG_CONFIG_EXECUTABLE=${PKGCONFIG}
+        "-Dtests=disabled"
+        "-Drsvg-convert=disabled"
+        "-Drsvg-view-3=disabled"
+    ADDITIONAL_BINARIES
+        glib-mkenums='${CURRENT_HOST_INSTALLED_DIR}/tools/glib/glib-mkenums'
 )
 
-vcpkg_cmake_install()
-
+vcpkg_install_meson()
 vcpkg_copy_pdbs()
+vcpkg_fixup_pkgconfig()
 
-vcpkg_cmake_config_fixup(PACKAGE_NAME unofficial-librsvg CONFIG_PATH share/unofficial-librsvg)
-
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(COPY "${CURRENT_PORT_DIR}/unofficial-librsvg-config.cmake" DESTINATION "${CURRENT_PACKAGES_DIR}/share/unofficial-librsvg")
+file(COPY "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

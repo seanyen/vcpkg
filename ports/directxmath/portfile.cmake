@@ -1,33 +1,72 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Microsoft/DirectXMath
-    REF jan2021
-    SHA512 8288f9e4d30b4947e98122f298ca25b8e2f82091c1257d3a0fd4d8de44c4c9a97d4549c105b388afbefad11ad6f30429e875e3e70eb4aa7865be6d4c08d6d1f3
-    HEAD_REF master
-    FILE_DISAMBIGUATOR 2
+    REF jun2026
+    SHA512 47003d3c223e0b99f99346f0f6f971df1cab319dc975479b12a8b353022de603293761e1da78e811b824e649ec935de07b54c0abff308d4b0fcea05b7732e494
+    HEAD_REF main
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        xdsp BUILD_XDSP
+        dx11 BUILD_DX11
+        dx12 BUILD_DX12
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH cmake)
+set(EXTRA_OPTIONS "")
+
+if(("dx11" IN_LIST FEATURES) OR ("dx12" IN_LIST FEATURES))
+    vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
+    list(APPEND EXTRA_OPTIONS -DBUILD_SHMATH=ON)
+endif()
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS} ${EXTRA_OPTIONS}
+    MAYBE_UNUSED_VARIABLES BUILD_DX11 BUILD_DX12
+)
+
+vcpkg_cmake_install()
+
+file(INSTALL "${CURRENT_BUILDTREES_DIR}/${TARGET_TRIPLET}-rel/DirectXMath.pc" DESTINATION "${CURRENT_PACKAGES_DIR}/share/pkgconfig")
+
+vcpkg_fixup_pkgconfig()
+vcpkg_cmake_config_fixup(CONFIG_PATH share/directxmath)
+
+if(("dx11" IN_LIST FEATURES) OR ("dx12" IN_LIST FEATURES))
+    vcpkg_cmake_config_fixup(CONFIG_PATH share/directxsh)
+endif()
+
+if("xdsp" IN_LIST FEATURES)
+    vcpkg_cmake_config_fixup(CONFIG_PATH share/xdsp)
+endif()
 
 if(NOT VCPKG_TARGET_IS_WINDOWS)
     vcpkg_download_distfile(
         SAL_HEADER
-        URLS "https://raw.githubusercontent.com/dotnet/corert/master/src/Native/inc/unix/sal.h"
+        URLS "https://raw.githubusercontent.com/dotnet/runtime/v9.0.2/src/coreclr/pal/inc/rt/sal.h"
         FILENAME "sal.h"
-        SHA512 1643571673195d9eb892d2f2ac76eac7113ef7aa0ca116d79f3e4d3dc9df8a31600a9668b7e7678dfbe5a76906f9e0734ef8d6db0903ccc68fc742dd8238d8b0
+        SHA512 8085f67bfa4ce01ae89461cadf72454a9552fde3f08b2dcc3de36b9830e29ce7a6192800f8a5cb2a66af9637be0017e85719826a4cfdade508ae97f319e0ee8e
     )
 
     file(INSTALL
       ${DOWNLOADS}/sal.h
-      DESTINATION ${CURRENT_PACKAGES_DIR}/include/DirectXMath)
+      DESTINATION ${CURRENT_PACKAGES_DIR}/include)
 endif()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
+if(("dx11" IN_LIST FEATURES) OR ("dx12" IN_LIST FEATURES))
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+else()
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug")
+endif()
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+
+if(("dx11" IN_LIST FEATURES) OR ("dx12" IN_LIST FEATURES))
+    file(READ "${CMAKE_CURRENT_LIST_DIR}/shmathusage" USAGE_CONTENT)
+    file(APPEND "${CURRENT_PACKAGES_DIR}/share/${PORT}/usage" ${USAGE_CONTENT})
+endif()
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

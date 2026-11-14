@@ -1,22 +1,25 @@
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO g-truc/glm
-    REF bf71a834948186f4097caa076cd2663c69a10e1e #v0.9.9.8
-    SHA512 226266c02af616a96fb19ee32cf3f98347daa43a4fde5d618d36b38709dce1280de126c542524d40725ecf70359edcc5b60660554c65ce246514501fb4c9c87c
+    REF "${VERSION}"
+    SHA512 0a490f0c79cd4a8ba54f37358f8917cef961dab9e61417c84ae0959c61bc860e5b83f4fb7f27169fb3d08eef1d84131bddde23d60876922310205c901b1273aa
     HEAD_REF master
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DGLM_BUILD_LIBRARY=ON
+        -DGLM_BUILD_TESTS=OFF
+        -DGLM_BUILD_INSTALL=ON
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets()
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-# Put the license file where vcpkg expects it
-file(INSTALL ${SOURCE_PATH}/copying.txt DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/copying.txt")
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

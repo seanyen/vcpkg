@@ -1,17 +1,18 @@
 {
   "name": "aws-c-s3",
-  "version": "0.1.25",
-  "port-version": 1,
+  "version": "1.5.2",
   "description": "C99 library implementation for communicating with the S3 service, designed for maximizing throughput on high bandwidth EC2 instances.",
   "homepage": "https://github.com/awslabs/aws-c-s3",
-  "supports": "!arm & !uwp",
+  "license": "Apache-2.0",
   "dependencies": [
     "aws-c-auth",
-    "aws-c-cal",
-    "aws-c-common",
-    "aws-c-compression",
     "aws-c-http",
-    "aws-c-io",
+    {
+      "name": "aws-c-io",
+      "version>=": "1.1.1"
+    },
+    "aws-c-sdkutils",
+    "aws-checksums",
     {
       "name": "s2n",
       "platform": "!uwp & !windows"
@@ -24,5 +25,10 @@
       "name": "vcpkg-cmake-config",
       "host": true
     }
-  ]
+  ],
+  "features": {
+    "endpoint-resolver": {
+      "description": "Whether to include the s3 endpoint resolver and related config files"
+    }
+  }
 }

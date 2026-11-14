@@ -1,20 +1,21 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO max0x7ba/atomic_queue
-    REF 7619054490efdbfe377bd528bc09b21f5cd38a02
-    SHA512 0d145f461a5c978c4d6f6d8ec1f06f0c61f3d009e65eac12db806c2aa7941461f881b34b9c4dd9aeebd3206a4598e6081f89f983c389b2f5aecefefcbddd94b6
+    REF "v${VERSION}"
+    SHA512 6e5f024dc10821905f6f976df0975b43b28007644d1c9158e9e1838738f967cbf0afc3d9ed3fd26ab382e95d8ed07a947c75ae6d33194b9b466be3304f15dd15
     HEAD_REF master
 )
 
-file(
-    COPY 
-        ${SOURCE_PATH}/include/atomic_queue/atomic_queue.h 
-        ${SOURCE_PATH}/include/atomic_queue/atomic_queue_mutex.h 
-        ${SOURCE_PATH}/include/atomic_queue/barrier.h 
-        ${SOURCE_PATH}/include/atomic_queue/defs.h 
-        ${SOURCE_PATH}/include/atomic_queue/spinlock.h 
-    DESTINATION 
-        ${CURRENT_PACKAGES_DIR}/include/atomic_queue
-)
+set(VCPKG_BUILD_TYPE release) # header-only port
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DATOMIC_QUEUE_ENABLE_INSTALL=ON
+)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(PACKAGE_NAME atomic_queue)
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

@@ -1,50 +1,3 @@
-#[===[
-# vcpkg_host_path_list
-
-Modify a host path list variable (PATH, INCLUDE, LIBPATH, etc.)
-
-```cmake
-vcpkg_host_path_list(PREPEND <list-var> [<path>...])
-vcpkg_host_path_list(APPEND <list-var> [<path>...])
-vcpkg_host_path_list(SET <list-var> [<path>...])
-```
-
-`<list-var>` may be either a regular variable name, or `ENV{variable-name}`,
-in which case `vcpkg_host_path_list` will modify the environment.
-
-`vcpkg_host_path_list` adds all of the paths passed to it to `<list-var>`;
-`PREPEND` puts them before the existing list, so that they are searched first;
-`APPEND` places them after the existing list,
-so they would be searched after the paths which are already in the variable,
-and `SET` replaces the value of the existing list.
-
-For all of `APPEND`, `PREPEND`, and `SET`,
-the paths are added (and thus searched) in the order received.
-
-If no paths are passed to `APPEND` or `PREPEND`, nothing will be done;
-for `SET`, the variable will be set to the empty string.
-#]===]
-
-function(z_vcpkg_translate_to_host_path_list out_var lst)
-    if(NOT DEFINED arg_UNPARSED_ARGUMENTS)
-        set("${out_var}" "" PARENT_SCOPE)
-    else()
-        if("${VCPKG_HOST_PATH_SEPARATOR}" STREQUAL ";")
-            set("${out_var}" "${lst}" PARENT_SCOPE)
-
-            string(FIND "${lst}" [[\;]] index_of_host_path_separator)
-        else()
-            vcpkg_list(JOIN lst "${VCPKG_HOST_PATH_SEPARATOR}" arguments)
-            set("${out_var}" "${arguments}" PARENT_SCOPE)
-
-            string(FIND "${lst}" "${VCPKG_HOST_PATH_SEPARATOR}" index_of_host_path_separator)
-        endif()
-        if(NOT "${index_of_host_path_separator}" EQUAL "-1")
-            message(FATAL_ERROR "Host path separator (${VCPKG_HOST_PATH_SEPARATOR}) in path; this is unsupported.")
-        endif()
-    endif()
-endfunction()
-
 function(vcpkg_host_path_list)
     if("${ARGC}" LESS "2")
         message(FATAL_ERROR "vcpkg_host_path_list requires at least two arguments.")
@@ -69,20 +22,36 @@ function(vcpkg_host_path_list)
     set(list_var "${ARGV1}")
 
     cmake_parse_arguments(PARSE_ARGV 2 arg "" "" "")
-    z_vcpkg_translate_to_host_path_list(arguments "${arg_UNPARSED_ARGUMENTS}")
+    set(bad_items "${arg_UNPARSED_ARGUMENTS}")
+    list(FILTER bad_items INCLUDE REGEX "[${VCPKG_HOST_PATH_SEPARATOR}]")
+    if(NOT "${bad_items}" STREQUAL "")
+        message(FATAL_ERROR "Host path separator (${VCPKG_HOST_PATH_SEPARATOR}) in path; this is unsupported.")
+    endif()
 
     if("${operation}" STREQUAL "SET")
+        cmake_path(CONVERT "${arg_UNPARSED_ARGUMENTS}" TO_NATIVE_PATH_LIST arguments)
         set(list "${arguments}")
-    elseif("${operation}" MATCHES "^(APPEND|PREPEND)$")
-        if("${arguments}" STREQUAL "")
-            # do nothing
-        elseif("${list}" STREQUAL "")
+    elseif("${operation}" STREQUAL "APPEND")
+        cmake_path(CONVERT "${arg_UNPARSED_ARGUMENTS}" TO_NATIVE_PATH_LIST arguments)
+        if("${list}" STREQUAL "")
             set(list "${arguments}")
-        elseif(arg_PREPEND)
-            set(list "${arguments}${VCPKG_HOST_PATH_SEPARATOR}${list}")
-        else()
+        elseif(NOT "${arguments}" STREQUAL "")
             set(list "${list}${VCPKG_HOST_PATH_SEPARATOR}${arguments}")
         endif()
+    elseif("${operation}" STREQUAL "PREPEND")
+        cmake_path(CONVERT "${arg_UNPARSED_ARGUMENTS}" TO_NATIVE_PATH_LIST arguments)
+        if("${list}" STREQUAL "")
+            set(list "${arguments}")
+        elseif(NOT "${arguments}" STREQUAL "")
+            set(list "${arguments}${VCPKG_HOST_PATH_SEPARATOR}${list}")
+        endif()
+    elseif("${operation}" STREQUAL "REMOVE_DUPLICATES")
+        if(NOT VCPKG_HOST_PATH_SEPARATOR STREQUAL ";")
+            string(REPLACE [[;]] [[\\\;]] list "${list}")
+        endif()
+        cmake_path(CONVERT "${list}" TO_CMAKE_PATH_LIST current_list)
+        list(REMOVE_DUPLICATES current_list)
+        cmake_path(CONVERT "${current_list}" TO_NATIVE_PATH_LIST list)
     else()
         message(FATAL_ERROR "Operation ${operation} not recognized.")
     endif()

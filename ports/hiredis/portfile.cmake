@@ -1,43 +1,87 @@
-if (VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-    set(HIREDIS_PATCHES support-static-in-win.patch)
-endif()
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO redis/hiredis
-    REF v1.0.2
-    SHA512 86497a1c21869bbe535378885eee6dbd594ef96325966511a3513f81e501af0f5ac7fed864f3230372f3ac7a23c05bad477fa5aa90b9747c9fb1408028174f9b
+    REF "v${VERSION}"
+    SHA512 d0b902eaeee681202ce96126180facca7534160d556d2713a272c933ec9c20a51f551aec157b1c53a4cec0dd63c226ddb67f718d98e8dc9e7d1d08bbc446db86
     HEAD_REF master
     PATCHES
-        fix-feature-example.patch
         fix-timeval.patch
-        fix-include-path.patch
-        fix-ssize_t.patch
-        ${HIREDIS_PATCHES}
+        support-static.patch
+        fix-cmake-conf-install-dir.patch
+        fix-ssl-cmake-dependency.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         ssl     ENABLE_SSL
-        example ENABLE_EXAMPLES
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    OPTIONS ${FEATURE_OPTIONS}
+    OPTIONS
+        -DDISABLE_TESTS=ON
+        -DBUILD_SHARED_LIBS=OFF
+        ${FEATURE_OPTIONS}
 )
 
 vcpkg_cmake_install()
 
 vcpkg_copy_pdbs()
 
+if("ssl" IN_LIST FEATURES)
+    vcpkg_replace_string(
+        "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/hiredis_ssl.pc"
+        "Libs.private: -lssl -lcrypto"
+        "Requires.private: openssl"
+    )
+    if(NOT VCPKG_BUILD_TYPE)
+        vcpkg_replace_string(
+            "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/hiredis_ssl.pc"
+            "Libs.private: -lssl -lcrypto"
+            "Requires.private: openssl"
+        )
+    endif()
+endif()
+
 vcpkg_fixup_pkgconfig()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+if(NOT VCPKG_BUILD_TYPE)
+    vcpkg_replace_string(
+        "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/hiredis.pc"
+        " -lhiredis"
+        " -lhiredisd"
+    )
+    if("ssl" IN_LIST FEATURES)
+        vcpkg_replace_string(
+            "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/hiredis_ssl.pc"
+            " -lhiredis_ssl"
+            " -lhiredis_ssld"
+        )
+    endif()
+endif()
+if(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    file(APPEND
+        "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/hiredis.pc"
+        "Libs.private: -lws2_32 -lcrypt32\n"
+    )
+
+    if(NOT VCPKG_BUILD_TYPE)
+        file(APPEND
+            "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/hiredis.pc"
+            "Libs.private: -lws2_32 -lcrypt32\n"
+        )
+    endif()
+endif()
+
 vcpkg_cmake_config_fixup()
 if("ssl" IN_LIST FEATURES)
     vcpkg_cmake_config_fixup(PACKAGE_NAME hiredis_ssl CONFIG_PATH share/hiredis_ssl)
 endif()
 
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+vcpkg_install_copyright(
+    FILE_LIST
+        "${SOURCE_PATH}/COPYING"
+        "${SOURCE_PATH}/ffc.h"
+)

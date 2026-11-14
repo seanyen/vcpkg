@@ -1,13 +1,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KDE/kjobwidgets
-    REF v5.88.0
-    SHA512 9d945adc0194a8f5cfea702c5f60b2046f5b350094959fa67a648a8dc23d3445304e96f5a75e03ec33281e63e606fb0e0893ac79a3cc438c5b302c37b7882838
+    REF "v${VERSION}"
+    SHA512 d7c55a2e12494282d89e234ec0188fba12816554e78f20c08d269f146ff1f513db326ef2ce88961558800a4873bc2f63a732196e73740a79fc2e2aedb2277224
     HEAD_REF master
 )
 
 # Prevent KDEClangFormat from writing to source effectively blocking parallel configure
-file(WRITE ${SOURCE_PATH}/.clang-format "DisableFormat: true\nSortIncludes: false\n")
+file(WRITE "${SOURCE_PATH}/.clang-format" "DisableFormat: true\nSortIncludes: false\n")
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -16,7 +16,7 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME KF5JobWidgets CONFIG_PATH lib/cmake/KF5JobWidgets)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/KF5JobWidgets)
 
 vcpkg_copy_pdbs()
 
@@ -27,6 +27,5 @@ endif()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSES/" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright")
-
-
+file(GLOB LICENSE_FILES "${SOURCE_PATH}/LICENSES/*")
+vcpkg_install_copyright(FILE_LIST ${LICENSE_FILES})

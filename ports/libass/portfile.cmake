@@ -1,27 +1,57 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libass/libass
-    REF 0.15.2
-    SHA512 ae3ea533e57ab3c386ce457dbaa39a256801b7340649d5ff80a51410481e73ab194724744b97d85cb6d111798e45eee594bb22da2f1f3c547fe8e331e0690127
+    REF ${VERSION}
+    SHA512 8dfea8ef3043ace28efa8a6ae4d6a443fd19d49ad19a521a642e7ec3a7c6f97284cda16d479e168ce30bd560f7e05a0675c9f3fde872bb92ed650343499a57b1
     HEAD_REF master
+    PATCHES
+        arm64-windows-asm.patch
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/config.h.in DESTINATION ${SOURCE_PATH})
+vcpkg_find_acquire_program(PKGCONFIG)
+get_filename_component(PKGCONFIG_EXE_PATH ${PKGCONFIG} DIRECTORY)
+vcpkg_add_to_path(${PKGCONFIG_EXE_PATH})
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/libass.def DESTINATION ${SOURCE_PATH})
+list(APPEND options
+    -Dcheckasm=disabled
+    -Dcompare=disabled
+    -Dfuzz=disabled
+    -Dprofile=disabled
+    -Dtest=disabled
+)
 
-# Since libass uses automake, make and configure, we use a custom CMake file
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
+if(NOT VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_OSX AND NOT VCPKG_TARGET_IS_LINUX)
+    list(APPEND options -Drequire-system-font-provider=false)
+endif()
 
-file(COPY ${SOURCE_PATH}/libass/ass.h ${SOURCE_PATH}/libass/ass_types.h DESTINATION ${CURRENT_PACKAGES_DIR}/include/ass)
+set(asm_option disabled)
+set(additional_binaries "")
+if(VCPKG_TARGET_ARCHITECTURE MATCHES "^(x86|x64|arm64)$")
+    set(asm_option enabled)
+    if(VCPKG_TARGET_ARCHITECTURE MATCHES "^(x86|x64)$")
+        vcpkg_find_acquire_program(NASM)
+        get_filename_component(NASM_EXE_PATH "${NASM}" DIRECTORY)
+        vcpkg_add_to_path("${NASM_EXE_PATH}")
+    elseif(VCPKG_TARGET_IS_WINDOWS AND VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64")
+        vcpkg_find_acquire_program(CLANG)
+        list(APPEND additional_binaries "clang = ['${CLANG}']")
+    endif()
+else()
+    message(WARNING "Assembly optimizations are not supported on ${VCPKG_TARGET_ARCHITECTURE}; disabling assembly optimizations.")
+endif()
+list(APPEND options -Dasm=${asm_option})
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA)
+vcpkg_configure_meson(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ${options}
+    ADDITIONAL_BINARIES
+        ${additional_binaries}
+)
 
-vcpkg_install_cmake()
+vcpkg_install_meson()
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
 
 # Handle copyright
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")

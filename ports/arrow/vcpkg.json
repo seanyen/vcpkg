@@ -1,9 +1,10 @@
 {
   "name": "arrow",
-  "version": "6.0.0",
+  "version": "26.0.1",
   "description": "Cross-language development platform for in-memory analytics",
   "homepage": "https://arrow.apache.org",
-  "supports": "x64 | (arm64 & !windows)",
+  "license": "Apache-2.0",
+  "supports": "x64 | arm64",
   "dependencies": [
     "boost-filesystem",
     "boost-multiprecision",
@@ -11,12 +12,16 @@
     "brotli",
     "bzip2",
     "gflags",
-    "glog",
     "lz4",
+    {
+      "name": "mimalloc",
+      "default-features": false
+    },
     "openssl",
     "re2",
     "snappy",
     "thrift",
+    "uriparser",
     "utf8proc",
     {
       "name": "vcpkg-cmake",
@@ -26,6 +31,7 @@
       "name": "vcpkg-cmake-config",
       "host": true
     },
+    "xsimd",
     "zlib",
     "zstd"
   ],
@@ -36,11 +42,45 @@
     "parquet"
   ],
   "features": {
+    "acero": {
+      "description": "Acero support",
+      "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "compute"
+          ]
+        }
+      ]
+    },
+    "compute": {
+      "description": "Build all computational kernel functions"
+    },
     "csv": {
       "description": "CSV support"
     },
+    "cuda": {
+      "description": "cuda support",
+      "dependencies": [
+        "cuda"
+      ]
+    },
     "dataset": {
-      "description": "Dataset support"
+      "description": "Dataset support",
+      "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "acero",
+            "filesystem"
+          ]
+        }
+      ]
+    },
+    "example": {
+      "description": "Install the minimal example (source code)"
     },
     "filesystem": {
       "description": "Filesystem support"
@@ -54,17 +94,51 @@
         "protobuf"
       ]
     },
+    "flightsql": {
+      "description": "FlightSQL support",
+      "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "flight"
+          ]
+        }
+      ]
+    },
+    "gcs": {
+      "description": "GCS support",
+      "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "filesystem"
+          ]
+        },
+        {
+          "name": "google-cloud-cpp",
+          "default-features": false,
+          "features": [
+            "storage"
+          ]
+        }
+      ]
+    },
     "jemalloc": {
-      "description": "jemalloc allocator"
+      "description": "jemalloc allocator",
+      "supports": "!windows"
     },
     "json": {
       "description": "JSON support",
       "dependencies": [
-        "rapidjson"
+        "rapidjson",
+        "simdjson"
       ]
     },
     "mimalloc": {
-      "description": "mimalloc allocator"
+      "description": "mimalloc allocator",
+      "supports": "!staticcrt"
     },
     "orc": {
       "description": "ORC support",
@@ -73,11 +147,28 @@
       ]
     },
     "parquet": {
-      "description": "Parquet support"
+      "description": "Parquet support",
+      "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "json"
+          ]
+        },
+        "rapidjson"
+      ]
     },
     "s3": {
       "description": "S3 support",
       "dependencies": [
+        {
+          "name": "arrow",
+          "default-features": false,
+          "features": [
+            "filesystem"
+          ]
+        },
         {
           "name": "aws-sdk-cpp",
           "default-features": false,

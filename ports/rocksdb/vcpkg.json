@@ -1,8 +1,10 @@
 {
   "name": "rocksdb",
-  "version": "6.26.1",
+  "version": "11.13.2",
   "description": "A library that provides an embeddable, persistent key-value store for fast storage",
-  "homepage": "https://github.com/facebook/rocksdb",
+  "homepage": "https://github.com/meta/rocksdb",
+  "license": "(GPL-2.0-only OR Apache-2.0) AND BSD-3-Clause AND BSD-2-Clause",
+  "supports": "!uwp & !(arm & !arm64 & android)",
   "dependencies": [
     {
       "name": "vcpkg-cmake",
@@ -18,37 +20,56 @@
   ],
   "features": {
     "bzip2": {
-      "description": "bzip2 support in rocksdb",
+      "description": "build with bzip2",
       "dependencies": [
         "bzip2"
       ]
     },
+    "liburing": {
+      "description": "build with liburing",
+      "supports": "linux",
+      "dependencies": [
+        {
+          "name": "liburing",
+          "platform": "linux"
+        }
+      ]
+    },
     "lz4": {
-      "description": "lz4 support in rocksdb",
+      "description": "build with lz4",
       "dependencies": [
         "lz4"
       ]
     },
-    "snappy": {
-      "description": "snappy support in rocksdb",
+    "numa": {
+      "description": "build with NUMA policy support",
+      "supports": "linux",
       "dependencies": [
-        "snappy"
+        {
+          "name": "numactl",
+          "platform": "linux"
+        }
       ]
     },
-    "tbb": {
-      "description": "tbb support in rocksdb",
+    "snappy": {
+      "description": "build with SNAPPY",
       "dependencies": [
-        "tbb"
+        {
+          "name": "snappy",
+          "features": [
+            "rtti"
+          ]
+        }
       ]
     },
     "zlib": {
-      "description": "zlib support in rocksdb",
+      "description": "build with zlib",
       "dependencies": [
         "zlib"
       ]
     },
     "zstd": {
-      "description": "zstd support in rocksdb",
+      "description": "build with zstd",
       "dependencies": [
         "zstd"
       ]

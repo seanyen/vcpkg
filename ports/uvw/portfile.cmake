@@ -1,23 +1,36 @@
-#header-only library
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO skypjack/uvw
-    REF 77af4a3fc4d932a52652807506fc50d0e58e875c # v2.7.0_libuv_v1.39
-    SHA512 b9ee4a60928fbcea84a9c551ce4d97095db68352546054116ecc8303eaeb46aecaef15ca2e5d3ebd14d8292be798fdea50b353ffdc727faa43c23cfd314ea407
+    REF "v${VERSION}_libuv_v1.48"
+    SHA512 dbf03c63b0693263b77b405e8f6bf4c207795be9bd024bbc06484e523b55257add1eab632067a956d03399d91ee389c46312603e7754b152c4caf51b40f6bec4
+    PATCHES
+        fix-find-libuv.patch
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        -DBUILD_UVW_LIBS=ON
+        -DBUILD_UVW_SHARED_LIB=OFF
+        -DFETCH_LIBUV=OFF
+        -DFIND_LIBUV=OFF
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets()
-file(INSTALL ${CMAKE_CURRENT_LIST_DIR}/uvw-config.cmake DESTINATION ${CURRENT_PACKAGES_DIR}/share/uvw/)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/uvw)
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug)
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/include/uvw/config.h" "#ifndef UVW_AS_LIB" "#define UVW_AS_LIB\n#ifndef UVW_AS_LIB")
 
-# Handle copyright/readme/package files
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/uvw RENAME copyright)
-file(INSTALL ${SOURCE_PATH}/README.md DESTINATION ${CURRENT_PACKAGES_DIR}/share/uvw)
+file(READ "${CURRENT_PACKAGES_DIR}/share/uvw/uvwConfig.cmake" cmake_config)
+file(WRITE "${CURRENT_PACKAGES_DIR}/share/uvw/uvwConfig.cmake"
+"include(CMakeFindDependencyMacro)
+find_dependency(libuv)
+${cmake_config}
+")
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

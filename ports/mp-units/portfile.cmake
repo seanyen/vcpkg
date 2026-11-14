@@ -1,15 +1,19 @@
+if(VCPKG_TARGET_IS_LINUX)
+    message("Note: `mp-units` requires Clang16+ or GCC11+")
+endif()
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO mpusz/units
-    REF v0.7.0
-    SHA512 72175f34f358d0741650ce9c8a7b28fced90cc45ddd3f1662ae1cb9ff7d31403ff742ee07ab4c96bd2d95af714d9111a888cf6acccb91e568e12d1ef663b2f64
+    REPO mpusz/mp-units
+    REF "v${VERSION}"
+    SHA512 949aa8e7382dc91cfc30dc3f3617b10fcd1ff7d30ba70bfe29ddcdad0309c12e08b74d0fe86686cd56579ca6ebbaa20cc5a5dede206dd9a977a6b9759495052d
     PATCHES
-        cmake.patch
-        config.patch
+      config.patch
 )
 
+
 vcpkg_cmake_configure(
-    SOURCE_PATH "${SOURCE_PATH}"
+    SOURCE_PATH "${SOURCE_PATH}/src"
 )
 
 vcpkg_cmake_install()
@@ -17,7 +21,7 @@ vcpkg_cmake_install()
 vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
 
 # Handle copyright/readme/package files
-file(INSTALL "${SOURCE_PATH}/LICENSE.md" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.md")
 file(INSTALL "${SOURCE_PATH}/README.md" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug"

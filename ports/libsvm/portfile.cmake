@@ -1,8 +1,10 @@
+
+string(REPLACE "." "" LIBSVM_VERSION "${VERSION}")
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO cjlin1/libsvm
-    REF v325
-    SHA512 D5323B128DFCDC7F64B2161E70FA7999C0A93D47C90B366BE066AA01EA92B5817F04812DEF2E05469DEE1F26C6A83DA5E50EEAE3F50B4062D9B24AC0944C6203
+    REF "v${LIBSVM_VERSION}"
+    SHA512 362b556e01caf118748b4905a4ab16f828e8f6bd0334e706faf38bc51f5b2e142b4821af6f2c49c27484ea5fdec24b7efa8fe52afb1878c4d823d2ecace9287e
     HEAD_REF master
 )
 
@@ -29,7 +31,7 @@ vcpkg_copy_pdbs()
 vcpkg_cmake_config_fixup(PACKAGE_NAME "unofficial-${PORT}" CONFIG_PATH "share/unofficial-${PORT}")
 
 if("tools" IN_LIST FEATURES)
-    if(WIN32)
+    if(VCPKG_TARGET_IS_WINDOWS)
         vcpkg_copy_tools(TOOL_NAMES svm-predict svm-scale svm-toy svm-train AUTO_CLEAN)
     else()
         vcpkg_copy_tools(TOOL_NAMES svm-predict svm-scale svm-train AUTO_CLEAN)
@@ -38,4 +40,4 @@ endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL "${SOURCE_PATH}/COPYRIGHT" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYRIGHT")

@@ -1,8 +1,8 @@
 {
   "name": "kf5configwidgets",
-  "version": "5.88.0",
+  "version": "5.116.0",
   "description": "Widgets for configuration dialogs",
-  "homepage": "https://api.kde.org/frameworks/kconfigwidgets/html/index.html",
+  "homepage": "https://api.kde.org/kconfigwidgets-index.html",
   "dependencies": [
     "ecm",
     {
@@ -12,13 +12,20 @@
         "tools"
       ]
     },
-    "kf5auth",
+    {
+      "name": "kf5auth",
+      "platform": "!(windows | android)"
+    },
     "kf5codecs",
     "kf5config",
+    "kf5coreaddons",
     "kf5guiaddons",
     "kf5i18n",
     "kf5widgetsaddons",
-    "qt5-base",
+    {
+      "name": "qt5-base",
+      "default-features": false
+    },
     "qt5-tools",
     {
       "name": "vcpkg-cmake",

@@ -1,31 +1,43 @@
-#https://github.com/google/benchmark/issues/661
-vcpkg_fail_port_install(ON_TARGET "uwp")
-
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO google/benchmark
-    REF f91b6b42b1b9854772a90ae9501464a161707d1e # v1.6.0
-    SHA512 5e3db75fcaa86b766d33e368f58cec5c5b2b9ba7fde658d13868d577679c13069756e68e86323b972daccc4f7d5e392d24d2d42e5308c1ae7e9955e651d45866
-    HEAD_REF master
+    REF "v${VERSION}"
+    SHA512 f207a63868e0c52f31a66ff9fd0ee75183ce3aaaa0946b00a49b77836507363bac8574feef8d9da82810a3167847303d6edf939e74802ad17e5a615bbf61e372
+    HEAD_REF main
+)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        tools BENCHMARK_INSTALL_TOOLS
 )
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DBENCHMARK_ENABLE_TESTING=OFF
+        -DBENCHMARK_INSTALL_DOCS=OFF
+        -DBENCHMARK_ENABLE_WERROR=OFF
+        ${FEATURES}
 )
 
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/benchmark)
-
 vcpkg_fixup_pkgconfig()
+
+if(BENCHMARK_INSTALL_TOOLS)
+    file(GLOB scripts "${CURRENT_PACKAGES_DIR}/share/googlebenchmark/tools/*.py")
+    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+    foreach(script IN LISTS scripts)
+      cmake_path(GET script FILENAME filename)
+      file(RENAME "${script}" "${CURRENT_PACKAGES_DIR}/tools/${PORT}/${filename}")
+    endforeach()
+	file(RENAME "${CURRENT_PACKAGES_DIR}/share/googlebenchmark/tools/gbench" "${CURRENT_PACKAGES_DIR}/tools/${PORT}/gbench")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/share/googlebenchmark")
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-# Handle copyright
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

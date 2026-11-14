@@ -3,10 +3,13 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/tokenizer
-    REF boost-1.77.0
-    SHA512 3e271ba5fd74ba532cb9fb37c9aabb2c37c7221d780dbcd20ac372109e8a93aae591b5bbdcf901325d3fa2e3bfb5f564601d9920397a78fe0a3a9efe58e992ad
+    REF boost-${VERSION}
+    SHA512 0af3c38bf9c72a7c624d37fbb32ea0b081f2d5cff55ee595803d0515a6a6564ce8e42bb83fccbc59a7e755ba60fe1f01b573c71bd09e8ec11a1d930fb2812687
     HEAD_REF master
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})
+set(FEATURE_OPTIONS "")
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
+)

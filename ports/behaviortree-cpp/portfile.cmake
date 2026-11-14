@@ -1,40 +1,58 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
-
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-
-vcpkg_download_distfile(ARCHIVE
-    URLS "https://github.com/BehaviorTree/BehaviorTree.CPP/archive/3.5.6.tar.gz"
-    FILENAME "BehaviorTree.CPP.3.5.6.tar.gz"
-    SHA512 cd3b15eb7c5bab68239b697da166220b4df8dd7e6cf5e831f316d411e24be56c9ed74e54a3e3dd332164d740159eaf9ce62d005601fd65133809dab29430c9b7
-)
-
-vcpkg_extract_source_archive_ex(
+vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE}
+    REPO BehaviorTree/BehaviorTree.CPP
+    REF "${VERSION}"
+    SHA512 3a3b32a1d2a6e1fb898a60612c54ddce8f877c0ac4288e7aa8e2c9827c87bffff69f68e36cb50f4db49bd47cca322306c99c841aefc3e453c2ef474455446d5c
+    HEAD_REF master
     PATCHES
-        001_port_fixes.patch
-        002_fix_dependencies.patch
+        remove-source-charset.diff # because vcpkg's default toolchain uses /utf-8 which is incompatible with /source-charset
+        fix-dependencies.patch
+        mtr_enabled.patch # https://github.com/BehaviorTree/BehaviorTree.CPP/pull/1291
+		warning_as_error.patch # Maintainer rejected an option for this: https://github.com/BehaviorTree/BehaviorTree.CPP/pull/1293
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+# Set BTCPP_SHARED_LIBS based on VCPKG_LIBRARY_LINKAGE
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BTCPP_SHARED_LIBS)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        groot BTCPP_GROOT_INTERFACE
+        sqlite BTCPP_SQLITE_LOGGING
+)
+
+if("groot" IN_LIST FEATURES)
+    # Avoid shadowing zeromq's vcpkg CMake wrapper during cppzmq's dependency lookup.
+    file(REMOVE "${SOURCE_PATH}/cmake/FindZeroMQ.cmake")
+endif()
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DCMAKE_DISABLE_FIND_PACKAGE_ament_cmake=1
-        -DCMAKE_DISABLE_FIND_PACKAGE_Curses=1
-        -DBUILD_EXAMPLES=OFF
-        -DBUILD_UNIT_TESTS=OFF
-        -DBUILD_TOOLS=OFF
+        -DBTCPP_EXAMPLES=OFF
+        -DBUILD_TESTING=OFF
+        -DBTCPP_BUILD_TOOLS=OFF
+        -DBTCPP_SHARED_LIBS=${BTCPP_SHARED_LIBS}
+        -DUSE_VENDORED_CPPZMQ=OFF
+        -DUSE_VENDORED_FLATBUFFERS=OFF
+        -DUSE_VENDORED_MINITRACE=OFF
+        -DUSE_VENDORED_TINYXML2=OFF
+        ${FEATURE_OPTIONS}
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/BehaviorTreeV3/cmake TARGET_PATH share/behaviortreev3)
+vcpkg_cmake_install()
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/behaviortree_cpp PACKAGE_NAME behaviortree_cpp)
 vcpkg_copy_pdbs()
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-
-file(REMOVE_RECURSE
-    "${CURRENT_PACKAGES_DIR}/debug/include"
-    "${CURRENT_PACKAGES_DIR}/lib/BehaviorTreeV3"
-    "${CURRENT_PACKAGES_DIR}/debug/lib/BehaviorTreeV3"
+vcpkg_install_copyright(
+    COMMENT [[
+The installed headers contain embedded copies of the following libraries:
+- linb::any and expected-lite, licensed under BSL-1.0. Copyright notices are retained in the headers; see https://www.boost.org/LICENSE_1_0.txt.
+- nlohmann/json and magic_enum, licensed under MIT. Copyright and SPDX notices are retained in the headers.
+]]
+    FILE_LIST
+        "${SOURCE_PATH}/LICENSE"
+        "${SOURCE_PATH}/3rdparty/minicoro/LICENSE"
 )
+
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")

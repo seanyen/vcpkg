@@ -1,8 +1,9 @@
 {
   "name": "qtquicktimeline",
-  "version-semver": "6.2.2",
-  "description": "Module for keyframe-based timeline construction.",
-  "homepage": "https://www.qt.io/",
+  "version": "6.11.3",
+  "description": "The Qt Quick Timeline module enables keyframe-based animations and parameterization.",
+  "homepage": "https://www.qt.io",
+  "license": null,
   "dependencies": [
     {
       "name": "qtbase",

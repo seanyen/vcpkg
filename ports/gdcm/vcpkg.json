@@ -1,12 +1,16 @@
 {
   "name": "gdcm",
-  "version": "3.0.7",
-  "port-version": 4,
+  "version": "3.2.7",
   "description": "Grassroots DICOM library",
   "homepage": "https://github.com/malaterre/GDCM",
-  "supports": "!uwp & !(windows & arm)",
+  "license": null,
+  "supports": "!uwp",
   "dependencies": [
     "expat",
+    {
+      "name": "libiconv",
+      "platform": "!windows"
+    },
     "openjpeg",
     {
       "name": "vcpkg-cmake",

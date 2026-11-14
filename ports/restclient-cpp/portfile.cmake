@@ -5,27 +5,24 @@ endif()
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO mrtazz/restclient-cpp
-    REF 0.5.2
-    SHA512 f6acc6a3d5cb852d6e507463d94d2f6192a941f0c26fef7c674e9ff7753cf5474522052a2065774050d01af5c6d2a3b86398f43cd2e4f5d03abcaac9a21ef4b7
+    REF "${VERSION}"
+    SHA512 d1d192b6aeb84735c978a6e419077d93c067f1de282b773bd09c06ee2f6ad40e4a40a832ab9e568a8d9f92daa4411cc9b61f3e72f202c91e85049e2055160ca2
     HEAD_REF master
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DCMAKE_DISABLE_FIND_PACKAGE_GTest=TRUE
         -DCMAKE_DISABLE_FIND_PACKAGE_jsoncpp=TRUE
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/restclient-cpp)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/restclient-cpp)
 
 vcpkg_copy_pdbs()
 
-# Remove includes in debug
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-# Handle copyright
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

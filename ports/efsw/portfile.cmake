@@ -1,28 +1,33 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO SpartanJ/efsw
-    REF b62d04829bb0a6f3cacc7859e0b046a3c053bc50
-    SHA512 fc16ef6ad330941dc0a1112ce645b57bd126d353556d50f45fadf150f25edd42c1d4946bc54d629d94c208d67d4ce17dbf5d1079cbeed51f0f6b1ccbe2199132
+    REF "${VERSION}"
+    SHA512 a3c77869ea72564f029d620928e01cf9c43841ef9094e0519088e3a67af228f979ea43acccee28ee2c07944afbd15811380b9d418f60af39086bf75d9a0d005a
     HEAD_REF master
 )
 
-vcpkg_configure_cmake(
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" EFSW_BUILD_SHARED_LIB)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" EFSW_BUILD_STATIC_LIB)
+
+# efsw CMakeLists sets up two targets "efsw" and "efsw-static" where the former is static or shared depending on BUILD_SHARED_LIBS and the latter is always static
+vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
     OPTIONS
         -DVERBOSE=OFF
         -DBUILD_TEST_APP=OFF
+        -DBUILD_SHARED_LIBS=${EFSW_BUILD_SHARED_LIB}
+        -DBUILD_STATIC_LIBS=0
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/efsw)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/efsw)
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
 vcpkg_copy_pdbs()
 
-# Handle copyright
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/LICENSE"
+    "${SOURCE_PATH}/src/efsw/String.hpp"
+)

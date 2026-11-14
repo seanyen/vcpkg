@@ -1,11 +1,17 @@
+vcpkg_download_distfile(FMT_BACKPORT_4813_PATCH
+    URLS https://github.com/fmtlib/fmt/commit/588b3a0f8f6a8bcf2a959cae882d5b2703e86737.patch?full_index=1
+    FILENAME fmt-backport-4813.patch
+    SHA512 afda8fdfcdcb4b0dd5df4d4dae96a57a85fb9c4b65d0b49d51258f0913d4aed93ed146ebf96ed7b277490b1dde6c7117f43332013071441a96c3147520de8368
+)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO fmtlib/fmt
-    REF d141cdbeb0fb422a3fb7173b285fd38e0d1772dc # v8.0.1
-    SHA512 1171f0305bed07497d2957b4053e8802030f448921c5bc1b066345dc1e77fbdb96d2c7f323452a32278ae4adb01e69e80b816119b0821e37d50980800e7406f8
+    REF "${VERSION}"
+    SHA512 d00479330c8b8c6a61a9420ac86c855964c3b611c0989158921a1ff7d1cac09f91cdec56219aebfbca0c47a3bdea98139620d45edaf14641b73288dcb3a6cc1c
     HEAD_REF master
     PATCHES
-        fix-write-batch.patch
+        "${FMT_BACKPORT_4813_PATCH}"
 )
 
 vcpkg_cmake_configure(
@@ -17,49 +23,14 @@ vcpkg_cmake_configure(
 )
 
 vcpkg_cmake_install()
-file(INSTALL "${SOURCE_PATH}/LICENSE.rst" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-if(VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
-    if(VCPKG_TARGET_IS_WINDOWS)
-        if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-            if(EXISTS "${CURRENT_PACKAGES_DIR}/debug/lib/fmtd.dll")
-                file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/debug/bin")
-                file(RENAME "${CURRENT_PACKAGES_DIR}/debug/lib/fmtd.dll" "${CURRENT_PACKAGES_DIR}/debug/bin/fmtd.dll")
-            endif()
-        endif()
-        if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-            if(EXISTS "${CURRENT_PACKAGES_DIR}/lib/fmt.dll")
-                file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/bin")
-                file(RENAME "${CURRENT_PACKAGES_DIR}/lib/fmt.dll" "${CURRENT_PACKAGES_DIR}/bin/fmt.dll")
-            endif()
-        endif()
-    endif()
-
-    vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/fmt/core.h
-        "defined(FMT_SHARED)"
-        "1"
-    )
-endif()
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-
 vcpkg_cmake_config_fixup()
 vcpkg_fixup_pkgconfig()
-
-if(VCPKG_TARGET_IS_WINDOWS)
-    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "debug")
-        vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/share/fmt/fmt-targets-debug.cmake
-            "lib/fmtd.dll"
-            "bin/fmtd.dll"
-        )
-    endif()
-    if(NOT DEFINED VCPKG_BUILD_TYPE OR VCPKG_BUILD_TYPE STREQUAL "release")
-        vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/share/fmt/fmt-targets-release.cmake
-            "lib/fmt.dll"
-            "bin/fmt.dll"
-        )
-    endif()
-endif()
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-
-# Handle post-build CMake instructions
 vcpkg_copy_pdbs()
+
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+)
+
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

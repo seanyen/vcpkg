@@ -1,62 +1,85 @@
 # Copyright (c) Microsoft Corporation.
 # SPDX-License-Identifier: MIT
 
-# REPLACE WITH DROP-TO-ADMIN-USER-PREFIX.ps1
-
-# REPLACE WITH UTILITY-PREFIX.ps1
-
-# REPLACE WITH $CudnnUrl
-
-$CudnnLocalZipPath = "$PSScriptRoot\cudnn-11.2-windows-x64-v8.1.1.33.zip"
-
-$CudaUrl = 'https://developer.download.nvidia.com/compute/cuda/11.3.0/network_installers/cuda_11.3.0_win10_network.exe'
-
-$CudaFeatures = 'nvcc_11.3 cuobjdump_11.3 nvprune_11.3 cupti_11.3 memcheck_11.3 nvdisasm_11.3 nvprof_11.3 ' + `
- 'visual_studio_integration_11.3 visual_profiler_11.3 visual_profiler_11.3 cublas_11.3 cublas_dev_11.3 ' + `
- 'cudart_11.3 cufft_11.3 cufft_dev_11.3 curand_11.3 curand_dev_11.3 cusolver_11.3 cusolver_dev_11.3 ' + `
- 'cusparse_11.3 cusparse_dev_11.3 npp_11.3 npp_dev_11.3 nvrtc_11.3 nvrtc_dev_11.3 nvml_dev_11.3 ' + `
- 'occupancy_calculator_11.3 thrust_11.3 '
-
-$destination = "$env:ProgramFiles\NVIDIA GPU Computing Toolkit\CUDA\v11.3"
-
-try {
-  Write-Host 'Downloading CUDA...'
-  [string]$installerPath = Get-TempFilePath -Extension 'exe'
-  curl.exe -L -o $installerPath -s -S $CudaUrl
-  Write-Host 'Installing CUDA...'
-  $proc = Start-Process -FilePath $installerPath -ArgumentList @('-s ' + $CudaFeatures) -Wait -PassThru
-  $exitCode = $proc.ExitCode
-  if ($exitCode -eq 0) {
-    Write-Host 'Installation successful!'
-  }
-  else {
-    Write-Error "Installation failed! Exited with $exitCode."
-    throw
-  }
-}
-catch {
-  Write-Error "Failed to install CUDA! $($_.Exception.Message)"
-  throw
+if (Test-Path -LiteralPath "$PSScriptRoot/utility-prefix.ps1") {
+  . "$PSScriptRoot/utility-prefix.ps1"
 }
 
-try {
-  if ([string]::IsNullOrWhiteSpace($CudnnUrl)) {
-    if (-Not (Test-Path $CudnnLocalZipPath)) {
-      throw "CUDNN zip ($CudnnLocalZipPath) was missing, please download from NVidia and place next to this script."
-    }
+$CudaUrl = Get-AssetUrl `
+  -InternetUrl 'https://developer.download.nvidia.com/compute/cuda/13.4.3/local_installers/cuda_13.4.3_windows_x86_64.exe' `
+  -BlobAssetName 'cuda_13.4.3_windows_x86_64.exe'
 
-    $cudnnZipPath = $CudnnLocalZipPath
-  } else {
-    Write-Host 'Downloading CUDNN...'
-    $cudnnZipPath = Get-TempFilePath -Extension 'zip'
-    curl.exe -L -o $cudnnZipPath -s -S $CudnnUrl
-  }
-
-  Write-Host "Installing CUDNN to $destination..."
-  tar.exe -xvf "$cudnnZipPath" --strip 1 --directory "$destination"
-  Write-Host 'Installation successful!'
-}
-catch {
-  Write-Error "Failed to install CUDNN! $($_.Exception.Message)"
-  throw
-}
+# https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/index.html
+# On version updates, extract the package manifests from the installer with:
+#  7z x cuda_<version>_windows_x86_64.exe -o<output> -ir!*.nvi
+# Each manifest whose customInstallTree/treeNode has accessibility="selectable" names a valid package
+# in its root <nvi name="..."> element. Compare those names with both lists below; NVIDIA changes the
+# package names and composition between releases. Confirm every omission is still related to drivers,
+# documentation, or Visual Studio.
+#
+# Intentionally omitted due to being Visual Studio / GUI features:
+#  ctadvisor_13.4
+#  nsight_compute_13.4
+#  nsight_systems_13.4
+#  nsight_vse_13.4
+#  visual_studio_integration_13.4
+# Intentionally omitted due to being documentation:
+#  documentation_13.4
+#  occupancy_calculator_13.4 (this is named like a tool but listed as 'documentation' in the installer)
+# (Drivers used to be omitted but as of CUDA 13 they no longer seem to be in the CUDA installer)
+DownloadAndInstall -Url $CudaUrl -Args @(
+  '-s',
+  'crt_13.4',
+  'cublas_13.4',
+  'cublas_dev_13.4',
+  'cublas_cross_13.4',
+  'cuda_profiler_api_13.4',
+  'cudart_13.4',
+  'cudart_cross_13.4',
+  'cufft_13.4',
+  'cufft_dev_13.4',
+  'cufft_cross_13.4',
+  'cuobjdump_13.4',
+  'cupti_13.4',
+  'cupti_cross_13.4',
+  'curand_13.4',
+  'curand_dev_13.4',
+  'curand_cross_13.4',
+  'cusolver_13.4',
+  'cusolver_dev_13.4',
+  'cusolver_cross_13.4',
+  'cusparse_13.4',
+  'cusparse_dev_13.4',
+  'cusparse_cross_13.4',
+  'cuxxfilt_13.4',
+  'cuxxfilt_cross_13.4',
+  'npp_13.4',
+  'npp_dev_13.4',
+  'npp_cross_13.4',
+  'nvcc_13.4',
+  'nvcc_cross_13.4',
+  'nvdisasm_13.4',
+  'nvfatbin_13.4',
+  'nvfatbin_cross_13.4',
+  'nvjitlink_13.4',
+  'nvjitlink_cross_13.4',
+  'nvjpeg_13.4',
+  'nvjpeg_dev_13.4',
+  'nvjpeg_cross_13.4',
+  'nvml_dev_13.4',
+  'nvml_dev_cross_13.4',
+  'nvprune_13.4',
+  'nvptxcompiler_13.4',
+  'nvptxcompiler_cross_13.4',
+  'nvrtc_13.4',
+  'nvrtc_dev_13.4',
+  'nvrtc_cross_13.4',
+  'nvtx_13.4',
+  'nvvm_13.4',
+  'opencl_13.4',
+  'opencl_cross_13.4',
+  'sanitizer_13.4',
+  'thrust_13.4',
+  'tileiras_13.4',
+  '-n'
+)

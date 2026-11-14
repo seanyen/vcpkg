@@ -1,17 +1,21 @@
-vcpkg_fail_port_install(ON_TARGET UWP)
-if(VCPKG_TARGET_IS_WINDOWS)
-    vcpkg_fail_port_install(ON_ARCH arm arm64)
-endif()
-
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO capnproto/capnproto
-    REF v0.9.1
-    SHA512 BDC5960F26214139744D768CA4558B085E2D359C375A8849CA532A4C458A2DAF0EE1A1F4D00745DE5ABF353AA1E4084A2D85E5523006F23F591F21FAC2D847FD
+    REF "v${VERSION}"
+    SHA512 d3072f590212d40010fa7946e000ac9fe927c9058fcda518c14275c7a217207db644d44a124398873d3875bb5f1f8e52dbeccfbc4b4c003e8e35fd83486fc343
     HEAD_REF master
+    PATCHES
+        001-fix-android.patch
+        002-fix-pkg-config.patch
 )
+
+if(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
+    # In ARM64 it fails without /bigobj
+    set(VCPKG_CXX_FLAGS "${VCPKG_CXX_FLAGS} /bigobj")
+    set(VCPKG_C_FLAGS "${VCPKG_C_FLAGS} /bigobj")
+endif()
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES

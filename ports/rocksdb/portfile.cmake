@@ -1,16 +1,13 @@
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-
 vcpkg_from_github(
   OUT_SOURCE_PATH SOURCE_PATH
-  REPO facebook/rocksdb
-  REF 4d57a393a8f1563c0dff1ff468756c23d89e3601 # v6.26.1
-  SHA512 0f3e13704bd990763f1176c07d329271e6a834ae0225db4f2c11c645447e77d2f369eb110f5c962c31e1b7704d870ed9d38144858343fb0e5439e8c935ee9a19
-  HEAD_REF master
+  REPO meta/rocksdb
+  REF "v${VERSION}"
+  SHA512 5293a41d9d3a05b58306899c1c2cf36d4c7562d956fb12b4357c2559d944ecda052cd7eb22f8da5b100130198d3febcd4b62c035928b90cc1c35ae84ef348e12
+  HEAD_REF main
   PATCHES
-    0002-only-build-one-flavor.patch
-    0003-use-find-package.patch
-    0004-fix-dependency-in-config.patch
-    0005-do-not-install-cmake-modules.patch
+    0001-fix-dependencies.patch
+    0002-fix-android.patch
+    fix-packaging.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "dynamic" WITH_MD_LIBRARY)
@@ -18,36 +15,42 @@ string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" ROCKSDB_BUILD_SHARED)
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
   FEATURES
-      "lz4"     WITH_LZ4
-      "snappy"  WITH_SNAPPY
-      "zlib"    WITH_ZLIB
-      "zstd"    WITH_ZSTD
-      "bzip2"   WITH_BZ2
-      "tbb"     WITH_TBB
-  INVERTED_FEATURES
-      "tbb"     CMAKE_DISABLE_FIND_PACKAGE_TBB
+    "liburing" WITH_LIBURING
+    "snappy" WITH_SNAPPY
+    "lz4" WITH_LZ4
+    "zlib" WITH_ZLIB
+    "zstd" WITH_ZSTD
+    "bzip2" WITH_BZ2
+    "numa" WITH_NUMA
 )
 
+if(WITH_LIBURING)
+  vcpkg_find_acquire_program(PKGCONFIG)
+  vcpkg_list(APPEND FEATURE_OPTIONS "-DPKG_CONFIG_EXECUTABLE=${PKGCONFIG}")
+endif()
+
 vcpkg_cmake_configure(
-  SOURCE_PATH ${SOURCE_PATH}
-  PREFER_NINJA
+  SOURCE_PATH "${SOURCE_PATH}"
   OPTIONS
     -DWITH_GFLAGS=OFF
     -DWITH_TESTS=OFF
     -DWITH_BENCHMARK_TOOLS=OFF
     -DWITH_TOOLS=OFF
-    -DWITH_FOLLY_DISTRIBUTED_MUTEX=OFF
-    -DUSE_RTTI=1
+    -DWITH_CORE_TOOLS=OFF
+    -DWITH_TRACE_TOOLS=OFF
+    -DUSE_RTTI=ON
     -DROCKSDB_INSTALL_ON_WINDOWS=ON
     -DFAIL_ON_WARNINGS=OFF
     -DWITH_MD_LIBRARY=${WITH_MD_LIBRARY}
-    -DPORTABLE=ON
-    -DCMAKE_DEBUG_POSTFIX=d
+    -DPORTABLE=1 # Minimum CPU arch to support, or 0 = current CPU, 1 = baseline CPU
     -DROCKSDB_BUILD_SHARED=${ROCKSDB_BUILD_SHARED}
-    -DCMAKE_DISABLE_FIND_PACKAGE_NUMA=TRUE
-    -DCMAKE_DISABLE_FIND_PACKAGE_gtest=TRUE
     -DCMAKE_DISABLE_FIND_PACKAGE_Git=TRUE
     ${FEATURE_OPTIONS}
+  OPTIONS_DEBUG
+    -DCMAKE_DEBUG_POSTFIX=d
+    -DWITH_RUNTIME_DEBUG=ON
+  OPTIONS_RELEASE
+    -DWITH_RUNTIME_DEBUG=OFF
 )
 
 vcpkg_cmake_install()
@@ -59,5 +62,19 @@ vcpkg_copy_pdbs()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE.Apache" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-file(INSTALL "${SOURCE_PATH}/LICENSE.leveldb" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_fixup_pkgconfig()
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+
+vcpkg_install_copyright(COMMENT [[
+RocksDB is dual-licensed under both the GPLv2 (found in COPYING)
+and Apache 2.0 License (found in LICENSE.Apache). You may select,
+at your option, one of the above-listed licenses.
+]]
+  FILE_LIST
+    "${SOURCE_PATH}/LICENSE.leveldb"
+    "${SOURCE_PATH}/LICENSE.Apache"
+    "${SOURCE_PATH}/COPYING"
+    "${SOURCE_PATH}/util/xxhash.h"
+    "${SOURCE_PATH}/util/xxph3.h"
+)

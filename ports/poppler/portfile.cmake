@@ -1,45 +1,111 @@
-vcpkg_from_github(
+string(REGEX REPLACE "^([0-9]+)[.]([0-9][.])" "\\1.0\\2" POPPLER_VERSION "${VERSION}")
+vcpkg_from_gitlab(
+    GITLAB_URL https://gitlab.freedesktop.org
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO freedesktop/poppler
-    REF poppler-20.12.1
-    SHA512 f692682689c0b0fcc3953a1cc157b6e1d2ce3ccab185189d6dc0807f1dd3ea2d1a9773d0b805079a30b3c8a3b0cf3ee83239ed48d7b08dc7762eba29c2033674
+    REPO poppler/poppler
+    REF "poppler-${POPPLER_VERSION}"
+    SHA512 f7385776fc96044eda16d67ef5bf9fcd3ff593bcac4c2860f0f6dc48a136e6d5dac1ed61f031210f51838d6b2f3bc281a768cefc332e6cb6fda781ebaa428d4a
     HEAD_REF master
     PATCHES
-        0002-remove-test-subdirectory.patch
-        0003-fix-gperf-not-recognized.patch
-        0004-disable-clang-format.patch
+        export-unofficial-poppler.patch
+        private-namespace.patch
 )
 
-vcpkg_find_acquire_program(GPERF)
-get_filename_component(GPERF_PATH ${GPERF} DIRECTORY)
-vcpkg_add_to_path(${GPERF_PATH})
+set(POPPLER_PC_REQUIRES "freetype2 libjpeg libopenjp2 libpng libtiff-4 poppler-vcpkg-iconv")
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
-    curl ENABLE_CURL
-    zlib ENABLE_ZLIB
-    splash ENABLE_SPLASH
+    FEATURES
+        cairo       WITH_Cairo
+        cairo       VCPKG_LOCK_FIND_PACKAGE_CAIRO
+        cms         ENABLE_LCMS
+        cms         VCPKG_LOCK_FIND_PACKAGE_LCMS2
+        curl        ENABLE_LIBCURL
+        curl        VCPKG_LOCK_FIND_PACKAGE_CURL
+        glib        ENABLE_GLIB
+        glib        VCPKG_LOCK_FIND_PACKAGE_GLIB
+        private-api ENABLE_UNSTABLE_API_ABI_HEADERS
+        qt          ENABLE_QT6
+        qt          VCPKG_LOCK_FIND_PACKAGE_Qt6
+        zlib        ENABLE_ZLIB_UNCOMPRESS
 )
+if("fontconfig" IN_LIST FEATURES)
+    list(APPEND FEATURE_OPTIONS "-DFONT_CONFIGURATION=fontconfig")
+    string(APPEND POPPLER_PC_REQUIRES " fontconfig")
+elseif(VCPKG_TARGET_IS_ANDROID)
+    list(APPEND FEATURE_OPTIONS "-DFONT_CONFIGURATION=android")
+elseif(VCPKG_TARGET_IS_WINDOWS)
+    list(APPEND FEATURE_OPTIONS "-DFONT_CONFIGURATION=win32")
+else()
+    list(APPEND FEATURE_OPTIONS "-DFONT_CONFIGURATION=generic")
+endif()
+if("cairo" IN_LIST FEATURES)
+    string(APPEND POPPLER_PC_REQUIRES " cairo")
+endif()
+if("curl" IN_LIST FEATURES)
+    string(APPEND POPPLER_PC_REQUIRES " libcurl")
+endif()
+if("zlib" IN_LIST FEATURES)
+    string(APPEND POPPLER_PC_REQUIRES " zlib")
+endif()
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+if("cms" IN_LIST FEATURES)
+    string(APPEND POPPLER_PC_REQUIRES " lcms2")
+endif()
+
+vcpkg_find_acquire_program(PKGCONFIG)
+vcpkg_find_acquire_program(PYTHON3)
+
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
+        "-DCMAKE_PROJECT_INCLUDE=${CMAKE_CURRENT_LIST_DIR}/cmake-project-include.cmake"
+        "-DPKG_CONFIG_EXECUTABLE=${PKGCONFIG}"
+        "-DGLIB2_MKENUMS_PYTHON=${PYTHON3}"
         -DBUILD_GTK_TESTS=OFF
         -DBUILD_QT5_TESTS=OFF
         -DBUILD_QT6_TESTS=OFF
         -DBUILD_CPP_TESTS=OFF
-        -DENABLE_LIBCURL=${ENABLE_CURL}
+        -DBUILD_MANUAL_TESTS=OFF
         -DENABLE_UTILS=OFF
-        -DENABLE_GLIB=OFF
-        -DENABLE_GLOBJECT_INTROSPECTION=OFF
+        -DENABLE_GOBJECT_INTROSPECTION=OFF
         -DENABLE_QT5=OFF
-        -DENABLE_QT6=OFF
+        -DENABLE_RELOCATABLE=OFF # https://gitlab.freedesktop.org/poppler/poppler/-/issues/1209
+        -DCMAKE_REQUIRE_FIND_PACKAGE_PkgConfig=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_OpenJPEG=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_JPEG=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_TIFF=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_PNG=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_Boost=ON
+        -DENABLE_NSS3=OFF
+        -DENABLE_GPGME=OFF
+        -DRUN_GPERF_IF_PRESENT=OFF
+        -DVCPKG_LOCK_FIND_PACKAGE_ECM=OFF
+        -DVCPKG_LOCK_FIND_PACKAGE_GTK=OFF
         ${FEATURE_OPTIONS}
+-DVCPKG_TRACE_FIND_PACKAGE=1
+    MAYBE_UNUSED_VARIABLES
+        GLIB2_MKENUMS_PYTHON
+        VCPKG_LOCK_FIND_PACKAGE_CURL
+        VCPKG_LOCK_FIND_PACKAGE_GLIB
+        VCPKG_LOCK_FIND_PACKAGE_LCMS2
+        VCPKG_LOCK_FIND_PACKAGE_CAIRO
+        VCPKG_LOCK_FIND_PACKAGE_GTK
+        VCPKG_LOCK_FIND_PACKAGE_Qt6
 )
+vcpkg_cmake_install()
 
-vcpkg_install_cmake()
+configure_file("${CMAKE_CURRENT_LIST_DIR}/unofficial-poppler-config.cmake" "${CURRENT_PACKAGES_DIR}/share/unofficial-poppler/unofficial-poppler-config.cmake" @ONLY)
+vcpkg_cmake_config_fixup(PACKAGE_NAME unofficial-poppler)
+
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/lib/pkgconfig/poppler.pc" "Libs:" "Requires.private: ${POPPLER_PC_REQUIRES}\nLibs:")
+if(NOT VCPKG_BUILD_TYPE)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/poppler.pc" "Libs:" "Requires.private: ${POPPLER_PC_REQUIRES}\nLibs:")
+endif()
+vcpkg_fixup_pkgconfig()
+vcpkg_copy_pdbs()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL ${SOURCE_PATH}/COPYING DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-vcpkg_fixup_pkgconfig()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")

@@ -1,57 +1,61 @@
-
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO KhronosGroup/SPIRV-Tools
-    REF v2021.1
-    SHA512 e8478eacb86415f75a1e5b3f66a0508b01a9f7e9d8b070eb0329ca56be137f5543dd42125a1033cb8552c01f46e11affd7fda866231b3742c66de9b4341930d5
+    REF "vulkan-sdk-${VERSION}"
+    SHA512 8237e02f950736ef8cff7a2cfaa4800f8beaf10e171624da02f0e73193da302afbba107e6d1840dbacebe81d1aeb0f22a69a20d504cd01371cc7302f83395ec0
     PATCHES
-        cmake-install.patch
-        install-config-typo.patch
-        0001-don-t-use-MP4.patch
+        cmake-config-dir.diff
+        spirv-tools-shared.diff
+        fix-tool-deps.diff
 )
 
 vcpkg_find_acquire_program(PYTHON3)
 get_filename_component(PYTHON3_DIR "${PYTHON3}" DIRECTORY)
 vcpkg_add_to_path("${PYTHON3_DIR}")
 
-if(VCPKG_TARGET_IS_IOS)
-    message(STATUS "Using iOS trplet. Executables won't be created...")
-    set(TOOLS_INSTALL OFF)
-    set(SKIP_EXECUTABLES ON) 
-else()
-    set(TOOLS_INSTALL ON)
-    set(SKIP_EXECUTABLES OFF)
-endif()
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
-    OPTIONS
-        -DSPIRV-Headers_SOURCE_DIR=${CURRENT_INSTALLED_DIR}
-        -DSPIRV_WERROR=OFF
-        -DSPIRV_SKIP_EXECUTABLES=${SKIP_EXECUTABLES} # option SPIRV_SKIP_TESTS follows this value
-        -DENABLE_SPIRV_TOOLS_INSTALL=${TOOLS_INSTALL}
-        -DSPIRV_TOOLS_BUILD_STATIC=ON
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    INVERTED_FEATURES
+        tools   SPIRV_SKIP_EXECUTABLES
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH share/SPIRV-Tools TARGET_PATH share/SPIRV-Tools) # the directory name is capitalized as opposed to the package name
-vcpkg_fixup_cmake_targets(CONFIG_PATH share/SPIRV-Tools-link TARGET_PATH share/SPIRV-Tools-link)
-vcpkg_fixup_cmake_targets(CONFIG_PATH share/SPIRV-Tools-opt TARGET_PATH share/SPIRV-Tools-opt)
-vcpkg_fixup_cmake_targets(CONFIG_PATH share/SPIRV-Tools-reduce TARGET_PATH share/SPIRV-Tools-reduce)
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ${FEATURE_OPTIONS}
+        "-DSPIRV-Headers_SOURCE_DIR=${CURRENT_INSTALLED_DIR}"
+        -DSPIRV_SKIP_TESTS=ON
+        -DSPIRV_TOOLS_BUILD_STATIC=ON
+        -DSPIRV_WERROR=OFF
+    OPTIONS_DEBUG
+        -DSPIRV_SKIP_EXECUTABLES=ON
+)
+
+vcpkg_cmake_install()
+file(INSTALL "${SOURCE_PATH}/include/spirv-tools/linter.hpp"
+    DESTINATION "${CURRENT_PACKAGES_DIR}/include/spirv-tools")
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/SPIRV-Tools PACKAGE_NAME spirv-tools DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/SPIRV-Tools-link PACKAGE_NAME spirv-tools-link DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/SPIRV-Tools-lint PACKAGE_NAME spirv-tools-lint DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/SPIRV-Tools-opt PACKAGE_NAME spirv-tools-opt DO_NOT_DELETE_PARENT_CONFIG_PATH)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/SPIRV-Tools-reduce PACKAGE_NAME spirv-tools-reduce) # now delete
+# Fixed upstream by KhronosGroup/SPIRV-Tools#6810; remove after the next SDK update.
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/share/spirv-tools-reduce/SPIRV-Tools-reduceConfig.cmake"
+    "SPIRV-Tools-reduceTargets.cmake" "SPIRV-Tools-reduceTarget.cmake")
 vcpkg_fixup_pkgconfig()
 
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/bin") # only static linkage, i.e. no need to preserve .dll/.so files
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
-file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
-file(REMOVE "${CURRENT_PACKAGES_DIR}/bin/SPIRV-Tools-shared.dll")
-file(REMOVE "${CURRENT_PACKAGES_DIR}/lib/libSPIRV-Tools-shared.so")
-file(REMOVE "${CURRENT_PACKAGES_DIR}/debug/lib/libSPIRV-Tools-shared.so")
-if(TOOLS_INSTALL)
-    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools")
-    file(RENAME "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+if("tools" IN_LIST FEATURES)
+    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+    file(RENAME "${CURRENT_PACKAGES_DIR}/bin/spirv-lesspipe.sh" "${CURRENT_PACKAGES_DIR}/tools/${PORT}/spirv-lesspipe.sh")
+    file(REMOVE "${CURRENT_PACKAGES_DIR}/debug/bin/spirv-lesspipe.sh")
+    set(tools spirv-as spirv-cfg spirv-diff spirv-dis spirv-link spirv-lint spirv-objdump spirv-opt spirv-reduce spirv-val)
+    vcpkg_copy_tools(TOOL_NAMES ${tools} AUTO_CLEAN)
 endif()
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(REMOVE_RECURSE
+    "${CURRENT_PACKAGES_DIR}/debug/include"
+    "${CURRENT_PACKAGES_DIR}/debug/share"
+)
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

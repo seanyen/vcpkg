@@ -1,25 +1,32 @@
-message(WARNING [=[
-LLFIO depends on Outcome which depends on QuickCppLib which uses the vcpkg versions of gsl-lite and byte-lite, rather than the versions tested by QuickCppLib's, Outcome's and LLFIO's CI. It is not guaranteed to work with other versions, with failures experienced in the past up-to-and-including runtime crashes. See the warning message from QuickCppLib for how you can pin the versions of those dependencies in your manifest file to those with which QuickCppLib was tested. Do not report issues to upstream without first pinning the versions as QuickCppLib was tested against.
-]=])
-
+if ("polyfill-cxx20" IN_LIST FEATURES)
+    message(WARNING [=[
+    LLFIO depends on Outcome which depends on QuickCppLib which uses the vcpkg versions of gsl-lite and byte-lite, rather than the versions tested by QuickCppLib's, Outcome's and LLFIO's CI. It is not guaranteed to work with other versions, with failures experienced in the past up-to-and-including runtime crashes. See the warning message from QuickCppLib for how you can pin the versions of those dependencies in your manifest file to those with which QuickCppLib was tested. Do not report issues to upstream without first pinning the versions as QuickCppLib was tested against.
+    ]=])
+endif()
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ned14/llfio
-    REF fba45d6bacbdc7710e257a0b3d229fe3ef3a1f5d
-    SHA512 d80e132a5b46859bf64d3808bfdc35331e6efd0668c297b7daf8c1453df00c5b8749103ad558456cfd71e9b5bd5b3bf7a1934871e64695bd97f90f2e04cd5621
+    REF 20260506
+    SHA512 d565298a7709a34482977406a7290cf109d44a428eb96c1ab788ceb8529ee4aa5736a8db9f51b0aeedb90c54bea00615038d24d0b26336aa6959fc11b8835ff6
     HEAD_REF develop
 )
 
-if(VCPKG_TARGET_IS_WINDOWS)
-  vcpkg_from_github(
-      OUT_SOURCE_PATH NTKEC_SOURCE_PATH
-      REPO ned14/ntkernel-error-category
-      REF bbd44623594142155d49bd3ce8820d3cf9da1e1e
-      SHA512 589d3bc7bca98ca8d05ce9f5cf009dd98b8884bdf3739582f2f6cbf5a324ce95007ea041450ed935baa4a401b4a0242c181fb6d2dcf7ad91587d75f05491f50e
-      HEAD_REF master
-  )
-endif()
+vcpkg_from_github(
+    OUT_SOURCE_PATH NTKEC_SOURCE_PATH
+    REPO ned14/ntkernel-error-category
+    REF 5e50ff9af36a029c8ead9e0a833aa78304e95f28
+    SHA512 a3b8bfba8b22c79913ced23358c4a5ec56d2f2f8ca8da3ebd2e7cfaa783363d92d9de1b49766756c7b008114eee31c1509195232adcc364446eae724489be930
+    HEAD_REF master
+)
+
+vcpkg_from_github(
+    OUT_SOURCE_PATH WG14_SIGNALS_SOURCE_PATH
+    REPO ned14/wg14_signals
+    REF 36d3cdb66993078c8fecba93e2a5f2c549572d64
+    SHA512 096d8a539fc09635ca4ea11907244eef06d856719dd5fb4a1f07264c1b1896e6bfe6754af164435adbb57462c03779b90fdb12e284c9855a1d22274d53345fee
+    HEAD_REF main
+)
 
 vcpkg_check_features(
     OUT_FEATURE_OPTIONS LLFIO_FEATURE_OPTIONS
@@ -27,65 +34,67 @@ vcpkg_check_features(
       status-code LLFIO_USE_EXPERIMENTAL_SG14_STATUS_CODE
 )
 
-# LLFIO needs a copy of QuickCppLib with which to bootstrap its cmake
-file(COPY "${CURRENT_INSTALLED_DIR}/include/quickcpplib"
-    DESTINATION "${SOURCE_PATH}/quickcpplib/repo/include/"
-)
-file(COPY "${CURRENT_INSTALLED_DIR}/share/ned14-internal-quickcpplib/"
-    DESTINATION "${SOURCE_PATH}/quickcpplib/repo/"
-)
-
 # LLFIO expects ntkernel-error-category to live inside its include directory
 file(REMOVE_RECURSE "${SOURCE_PATH}/include/llfio/ntkernel-error-category")
-if(VCPKG_TARGET_IS_WINDOWS)
-  file(RENAME "${NTKEC_SOURCE_PATH}" "${SOURCE_PATH}/include/llfio/ntkernel-error-category")
-endif()
-
-# Already installed dependencies don't appear on the include path, which LLFIO assumes.
-string(APPEND VCPKG_CXX_FLAGS " \"-I${CURRENT_INSTALLED_DIR}/include\"")
-string(APPEND VCPKG_C_FLAGS " \"-I${CURRENT_INSTALLED_DIR}/include\"")
+file(RENAME "${NTKEC_SOURCE_PATH}" "${SOURCE_PATH}/include/llfio/ntkernel-error-category")
+file(REMOVE_RECURSE "${SOURCE_PATH}/include/llfio/wg14_signals")
+file(RENAME "${WG14_SIGNALS_SOURCE_PATH}" "${SOURCE_PATH}/include/llfio/wg14_signals")
 
 set(extra_config)
 # cmake does not correctly set CMAKE_SYSTEM_PROCESSOR when targeting ARM on Windows
 if(VCPKG_TARGET_IS_WINDOWS AND (VCPKG_TARGET_ARCHITECTURE STREQUAL "arm" OR VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64"))
-  list(APPEND extra_config -DLLFIO_ASSUME_CROSS_COMPILING=On)
+  list(APPEND extra_config -DLLFIO_ASSUME_CROSS_COMPILING=ON)
+endif()
+# setting CMAKE_CXX_STANDARD here to prevent llfio from messing with compiler flags
+# the cmake package config requires said C++ standard target transitively via quickcpplib
+if ("polyfill-cxx20" IN_LIST FEATURES)
+    list(APPEND extra_config -DCMAKE_CXX_STANDARD=17)
+endif()
+if (VCPKG_CROSSCOMPILING)
+    # try_run() is not supported when cross-compiling
+    list(APPEND extra_config -DCXX_HAS_CXX17_FILESYSTEM=ON)
 endif()
 
-vcpkg_configure_cmake(
+# quickcpplib parses CMAKE_MSVC_RUNTIME_LIBRARY and cannot support the default crt linkage generator expression from vcpkg
+if(VCPKG_TARGET_IS_WINDOWS)
+    if(VCPKG_CRT_LINKAGE STREQUAL "dynamic")
+        list(APPEND extra_config -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$$<$$<CONFIG:Debug>:Debug>DLL)
+    else()
+        list(APPEND extra_config -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded$$<$$<CONFIG:Debug>:Debug>)
+    endif()
+endif()
+
+vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
-    PREFER_NINJA
     OPTIONS
-        -DPROJECT_IS_DEPENDENCY=On
-        -Dquickcpplib_FOUND=1
-        -Doutcome_FOUND=1
+        -Dllfio_IS_DEPENDENCY=On
+        "-DCMAKE_PREFIX_PATH=${CURRENT_INSTALLED_DIR}"
         ${LLFIO_FEATURE_OPTIONS}
         -DLLFIO_ENABLE_DEPENDENCY_SMOKE_TEST=ON  # Leave this always on to test everything compiles
         -DCMAKE_DISABLE_FIND_PACKAGE_Git=ON
+        -DCXX_CONCEPTS_FLAGS=
+        -DCXX_COROUTINES_FLAGS=
         ${extra_config}
 )
 
-# LLFIO install assumes that the static library is always built
-vcpkg_build_cmake(TARGET _sl)
 if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
-    vcpkg_build_cmake(TARGET _dl)
+    vcpkg_cmake_build(TARGET install.dl)
+elseif(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    vcpkg_cmake_build(TARGET install.sl)
 endif()
 
 if("run-tests" IN_LIST FEATURES)
-    vcpkg_build_cmake(TARGET test)
+    vcpkg_cmake_build(TARGET test)
 endif()
 
-vcpkg_install_cmake()
-
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/llfio)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/llfio)
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
-if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
-    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
-endif()
 
 if("status-code" IN_LIST FEATURES)
-    file(INSTALL "${CURRENT_PORT_DIR}/usage-status-code-${VCPKG_LIBRARY_LINKAGE}" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+    set(_USAGE_FEATURE "status-code")
 else()
-    file(INSTALL "${CURRENT_PORT_DIR}/usage-error-code-${VCPKG_LIBRARY_LINKAGE}" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+    set(_USAGE_FEATURE "error-code")
 endif()
-file(INSTALL "${SOURCE_PATH}/Licence.txt" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(INSTALL "${CURRENT_PORT_DIR}/usage-${_USAGE_FEATURE}-${VCPKG_LIBRARY_LINKAGE}" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME usage)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/Licence.txt")

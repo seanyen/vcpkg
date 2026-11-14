@@ -1,39 +1,46 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
-    REPO alicevision/popsift	
-    REF v0.9
-    SHA512 56789520872203eea86e07e8210e00c0b67d85486af16df9d620b1aff10f8d9ef5d910cf1dda6c68af7ca2ed11658ab5414ac79117b543f91a7d8d6a96a17ce0
+    REPO alicevision/popsift
+    REF v${VERSION}
+    SHA512 374a00542ff46ac8a8cf31b7a62c834e4e148c5f9ddd5f6a128e4284e637242c0ce55bf3ee6524e6555c8402332ec8863ca921cef36c0bacd9a1ada6c8e09b55
     HEAD_REF develop
+    PATCHES
+        pr-183-add-zcpreprocessor-for-cuda-13-2.diff # https://github.com/alicevision/popsift/pull/183
+        cuda-13.3-thrust-includes.patch # https://github.com/alicevision/popsift/pull/188
 )
 
-include(${CURRENT_INSTALLED_DIR}/share/cuda/vcpkg_find_cuda.cmake)
 vcpkg_find_cuda(OUT_CUDA_TOOLKIT_ROOT CUDA_TOOLKIT_ROOT)
 
-message(STATUS "CUDA_TOOLKIT_ROOT ${CUDA_TOOLKIT_ROOT}")
+# This is necessary as popsift uses cuda as first class language in CMake and 
+# depending on the version of CMake it might fail to find nvcc compiler.
+if(CMAKE_HOST_WIN32)
+    set(NVCC_PATH ${CUDA_TOOLKIT_ROOT}/bin/nvcc.exe)
+else()
+    set(NVCC_PATH ${CUDA_TOOLKIT_ROOT}/bin/nvcc)
+endif()
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
         apps       PopSift_BUILD_EXAMPLES
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS ${FEATURE_OPTIONS}
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT}
+        "-DCMAKE_CUDA_COMPILER=${NVCC_PATH}"
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/PopSift)
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/PopSift)
 
 vcpkg_copy_pdbs()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include ${CURRENT_PACKAGES_DIR}/debug/share)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
- # copy the apps in tools directory
- if ("apps" IN_LIST FEATURES)
-     vcpkg_copy_tools(TOOL_NAMES popsift-demo AUTO_CLEAN)
- endif()
+# copy the apps in tools directory
+if ("apps" IN_LIST FEATURES)
+    vcpkg_copy_tools(TOOL_NAMES popsift-demo AUTO_CLEAN)
+endif()
 
-file(INSTALL ${SOURCE_PATH}/COPYING.md DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${SOURCE_PATH}/COPYING.md" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)

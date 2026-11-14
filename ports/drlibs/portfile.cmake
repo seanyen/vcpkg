@@ -2,8 +2,8 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO mackron/dr_libs
-    REF f13cbcfd06afe7287f99b1bb5982cefdf3d6a974
-    SHA512 c108db409389f912bdcb979bc0dfe31658b8bcd7ce327145a77bdb9a168512e2c1a94cb59677b5d6bfa213e412498360a8ec25d5424bb2ba292edaf88bf5f195
+    REF fa931f3285ced10ace628f7f1ac951e1951e7ea6
+    SHA512 a1422ac827334d9e4adcbb7bc9b51244659c1c6e07b8e5ab3af2b82c5ac4842c4fb54a6a19d02e287eb2a8c3f470f556b2d111e23f10cae83a7ffb4e36ebc04f
     HEAD_REF master
 )
 
@@ -11,5 +11,4 @@ vcpkg_from_github(
 file(GLOB HEADER_FILES "${SOURCE_PATH}/*.h")
 file(COPY ${HEADER_FILES} DESTINATION "${CURRENT_PACKAGES_DIR}/include")
 
-# Put the licence file where vcpkg expects it
-configure_file("${SOURCE_PATH}/LICENSE" "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright" COPYONLY)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

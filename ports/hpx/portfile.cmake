@@ -1,22 +1,41 @@
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
+endif()
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" HPX_WITH_STATIC_LINKING)
 
-vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
+vcpkg_download_distfile(ASIO_1_34_PATCH
+    URLS https://github.com/STEllAR-GROUP/hpx/commit/f073c54f9c69108707dc477c890592049fcd95db.patch?full_index=1
+    FILENAME STEllAR-GROUP-hpx-f073c54f9c69108707dc477c890592049fcd95db.patch
+    SHA512 f7c0020d13e1a9fc67ca70488c0bd4b06449a9013be972d6c2d0d2fdb42b6a646176440acbb13c04441461c2a5251da75384112102fe4308a40f11313c02e4b7
+)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO STEllAR-GROUP/hpx
-    REF 1.7.1
-    SHA512 6bdb294da393a198abf81d5f63799a066334755eed0fda40bbfc4e9a774b6e19a3e5ad7ab45c989d31f3797e7b547bb552c29f51b552d9a79d166f86aee375a3
-    HEAD_REF stable
+    REF "v${VERSION}"
+    SHA512 bf22add7a97087f68bd49fe0ae5b2bfbd7ba01d4018872c3934ebd81a632e2559e6144c5aa06779db971c642d5a41b16c8c48108af2c4069be6d9f9b72985182
+    HEAD_REF master
+    PATCHES
+        "${ASIO_1_34_PATCH}"
+        fix-asio-resolver.patch # https://github.com/TheHPXProject/hpx/pull/7816
 )
 
-set(HPX_WITH_MALLOC system)
-if(VCPKG_TARGET_IS_LINUX)
-    # This is done at the request of the hpx maintainers; see
-    # https://github.com/microsoft/vcpkg/pull/21673#issuecomment-979904882
-    # It must match when gperftools is treated as a dependency of this port.
-    set(HPX_WITH_MALLOC tcmalloc)
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+    "zlib"              HPX_WITH_COMPRESSION_ZLIB
+    "snappy"            HPX_WITH_COMPRESSION_SNAPPY
+    "bzip2"             HPX_WITH_COMPRESSION_BZIP2
+    "cuda"              HPX_WITH_CUDA
+    "mpi"               HPX_WITH_PARCELPORT_MPI
+    "mpi"               HPX_WITH_PARCELPORT_MPI_MULTITHREADED
+)
+
+if(NOT VCPKG_TARGET_ARCHITECTURE MATCHES "(x64|x86)")
+    list(APPEND FEATURE_OPTIONS "-DHPX_WITH_GENERIC_CONTEXT_COROUTINES=ON")
 endif()
 
+file(REMOVE "${SOURCE_PATH}/cmake/FindBZip2.cmake") # Outdated
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -26,9 +45,16 @@ vcpkg_cmake_configure(
         -DHPX_WITH_EXAMPLES=OFF
         -DHPX_WITH_TOOLS=OFF
         -DHPX_WITH_RUNTIME=OFF
-        "-DHPX_WITH_MALLOC=${HPX_WITH_MALLOC}"
+        -DHPX_USE_CMAKE_CXX_STANDARD=ON
+        ${FEATURE_OPTIONS}
+        -DHPX_WITH_PKGCONFIG=OFF
+        -DHPX_WITH_STATIC_LINKING=${HPX_WITH_STATIC_LINKING}
+        -DHPX_WITH_PARCELPORT_TCP=ON
+        -DHPX_WITH_THREAD_TARGET_ADDRESS=ON
+        -DHPX_WITH_CHECK_MODULE_DEPENDENCIES=ON
+        -DHPX_WITH_THREAD_IDLE_RATES=ON
+        -DVCPKG_HOST_TRIPLET=${_HOST_TRIPLET}
 )
-
 vcpkg_cmake_install()
 
 # post build cleanup
@@ -62,37 +88,21 @@ file(INSTALL
     "${SOURCE_PATH}/LICENSE_1_0.txt"
     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
 
-file(GLOB DLLS "${CURRENT_PACKAGES_DIR}/lib/*.dll")
-if(DLLS)
-    file(COPY ${DLLS} DESTINATION "${CURRENT_PACKAGES_DIR}/bin")
-    file(REMOVE ${DLLS})
-endif()
-
-file(GLOB DLLS "${CURRENT_PACKAGES_DIR}/lib/hpx/*.dll")
-if(DLLS)
-    file(COPY ${DLLS} DESTINATION "${CURRENT_PACKAGES_DIR}/bin/hpx")
-    file(REMOVE ${DLLS})
-endif()
-
-file(GLOB DLLS "${CURRENT_PACKAGES_DIR}/debug/lib/*.dll")
-if(DLLS)
-    file(COPY ${DLLS} DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin")
-    file(REMOVE ${DLLS})
-endif()
-
-file(GLOB DLLS "${CURRENT_PACKAGES_DIR}/debug/lib/hpx/*.dll")
-if(DLLS)
-    file(COPY ${DLLS} DESTINATION "${CURRENT_PACKAGES_DIR}/debug/bin/hpx")
-    file(REMOVE ${DLLS})
-endif()
-
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
 vcpkg_fixup_pkgconfig()
 
-vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/bin/hpxcxx" "\"${CURRENT_PACKAGES_DIR}\"" "os.path.dirname(os.path.dirname(os.path.realpath(__file__)))")
-vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/bin/hpxcxx" "\"${CURRENT_PACKAGES_DIR}/debug\"" "os.path.dirname(os.path.dirname(os.path.realpath(__file__)))")
-file(REMOVE "${CURRENT_PACKAGES_DIR}/share/hpx/HPXCacheVariables.cmake")
+file(REMOVE "${CURRENT_PACKAGES_DIR}/bin/hpxcxx" "${CURRENT_PACKAGES_DIR}/debug/bin/hpxcxx")
 
-vcpkg_copy_pdbs()
+if(EXISTS "${CURRENT_PACKAGES_DIR}/bin/hpxrun.py")
+    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/tools/${PORT}")
+    file(RENAME "${CURRENT_PACKAGES_DIR}/bin/hpxrun.py" "${CURRENT_PACKAGES_DIR}/tools/${PORT}/hpxrun.py")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/${PORT}/hpxrun.py" "'${CURRENT_INSTALLED_DIR}/tools/openmpi/bin/mpiexec'" "'mpiexec'" IGNORE_UNCHANGED)
+endif()
+
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "static")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin" "${CURRENT_PACKAGES_DIR}/debug/bin")
+endif()
+
+configure_file("${CMAKE_CURRENT_LIST_DIR}/usage" "${CURRENT_PACKAGES_DIR}/share/${PORT}/usage" COPYONLY)

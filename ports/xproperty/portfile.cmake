@@ -3,26 +3,24 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO QuantStack/xproperty
-    REF 0.8.1
-    SHA512 70fcce3a3cc84be98d844aa59c14686945907db3c8fa1c9a916f0bab811ef96512464031e53f00d29cba7db750a0032f4b59d6ca524f52bc7cfe8de5cebad5e5
+    REF ${VERSION}
+    SHA512 5c7332b3f27ee8d81ca7cefc0666a4f8a4eb71697efe22da3fa6176d45b7ba26b09dd3b5b30b68d13c4b4fa4090ebecb73528ebceec4b699a7ad2d3e66bef745
     HEAD_REF master
     PATCHES
         fix-target.patch
 )
 
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DBUILD_TESTS=OFF
-        -DDOWNLOAD_GTEST=OFF
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/${PORT})
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug ${CURRENT_PACKAGES_DIR}/lib)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug" "${CURRENT_PACKAGES_DIR}/lib")
 
 # Handle copyright
-configure_file(${SOURCE_PATH}/LICENSE ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+configure_file("${SOURCE_PATH}/LICENSE" "${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright" COPYONLY)

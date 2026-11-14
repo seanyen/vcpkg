@@ -1,0 +1,22 @@
+diff --git a/contrib/minizip/CMakeLists.txt b/contrib/minizip/CMakeLists.txt
+index 6a18fa2..5e31cb9 100644
+--- a/contrib/minizip/CMakeLists.txt
++++ b/contrib/minizip/CMakeLists.txt
+@@ -161,7 +161,7 @@ if(MINIZIP_BUILD_SHARED)
+     target_include_directories(${ZLIB_CONTRIB_PREFIX}libminizip
+         PUBLIC
+             $<BUILD_INTERFACE:${minizip_SOURCE_DIR}>
+-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
++            $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>/minizip)
+     target_compile_definitions(${ZLIB_CONTRIB_PREFIX}libminizip
+         PRIVATE
+             $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_WARNINGS>
+@@ -240,7 +240,7 @@ if(MINIZIP_BUILD_STATIC)
+     target_include_directories(${ZLIB_CONTRIB_PREFIX}libminizipstatic
+         PUBLIC
+             $<BUILD_INTERFACE:${minizip_SOURCE_DIR}>
+-           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
++           $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>/minizip)
+     target_compile_definitions(${ZLIB_CONTRIB_PREFIX}libminizipstatic
+         PRIVATE
+             $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_WARNINGS>

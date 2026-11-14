@@ -1,59 +1,95 @@
-vcpkg_fail_port_install(ON_TARGET "Windows" "UWP")
-
 vcpkg_download_distfile(
     ARCHIVE_PATH
     URLS
-        "https://invisible-mirror.net/archives/ncurses/ncurses-6.2.tar.gz"
-        "ftp://ftp.invisible-island.net/ncurses/ncurses-6.2.tar.gz"
-        "https://ftp.gnu.org/gnu/ncurses/ncurses-6.2.tar.gz"
-    FILENAME "ncurses-6.2.tgz"
-    SHA512 4c1333dcc30e858e8a9525d4b9aefb60000cfc727bc4a1062bace06ffc4639ad9f6e54f6bdda0e3a0e5ea14de995f96b52b3327d9ec633608792c99a1e8d840d
+        "https://invisible-mirror.net/archives/ncurses/ncurses-${VERSION}.tar.gz"
+        "ftp://ftp.invisible-island.net/ncurses/ncurses-${VERSION}.tar.gz"
+        "https://ftp.gnu.org/gnu/ncurses/ncurses-${VERSION}.tar.gz"
+    FILENAME "ncurses-${VERSION}.tgz"
+    SHA512 fc5a13409d2a530a1325776dcce3a99127ddc2c03999cfeb0065d0eee2d68456274fb1c7b3cc99c1937bc657d0e7fca97016e147f93c7821b5a4a6837db821e8
 )
 
-vcpkg_extract_source_archive_ex(
-    OUT_SOURCE_PATH SOURCE_PATH
-    ARCHIVE ${ARCHIVE_PATH}
+vcpkg_extract_source_archive(
+    SOURCE_PATH
+    ARCHIVE "${ARCHIVE_PATH}"
 )
 
-set(OPTIONS
-    --disable-db-install
-    --enable-pc-files
-    --without-manpages
-    --without-progs
-    --without-tack
-    --without-tests
-)
-if(VCPKG_LIBRARY_LINKAGE STREQUAL dynamic)
+vcpkg_list(SET OPTIONS)
+
+if(VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
     list(APPEND OPTIONS
-        --with-shared
         --with-cxx-shared
-        --without-normal
+        --with-shared    # "lib model"
+        --without-normal # "lib model"
     )
 endif()
 
-set(OPTIONS_DEBUG
-    --with-pkg-config-libdir=${CURRENT_INSTALLED_DIR}/debug/lib/pkgconfig
-    --with-debug
-)
-set(OPTIONS_RELEASE
-    --with-pkg-config-libdir=${CURRENT_INSTALLED_DIR}/lib/pkgconfig
-    --without-debug
-)
+if(NOT VCPKG_TARGET_IS_MINGW)
+    list(APPEND OPTIONS
+        --enable-mixed-case
+    )
+endif()
 
-vcpkg_configure_make(
-    SOURCE_PATH ${SOURCE_PATH}
-    OPTIONS ${OPTIONS}
-    OPTIONS_DEBUG ${OPTIONS_DEBUG}
-    OPTIONS_RELEASE ${OPTIONS_RELEASE}
-    NO_ADDITIONAL_PATHS
-)
-vcpkg_install_make()
+if(VCPKG_TARGET_IS_MINGW)
+    list(APPEND OPTIONS
+        --disable-home-terminfo
+        --enable-term-driver
+        --disable-termcap
+    )
+endif()
 
+if("check-size" IN_LIST FEATURES)
+    list(APPEND OPTIONS
+        --enable-check-size
+    )
+endif()
+
+vcpkg_cmake_get_vars(cmake_vars_file)
+include("${cmake_vars_file}")
+
+# There are compilation errors on gcc 15. adding `-std=c17` to CFLAGS for workaround.
+# ref: https://gitlab.archlinux.org/archlinux/packaging/packages/ncurses/-/issues/3
+list(APPEND OPTIONS "CFLAGS=\$CFLAGS -std=c17")
+
+vcpkg_make_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
+    DEFAULT_OPTIONS_EXCLUDE "^--docdir"
+    OPTIONS
+        ${OPTIONS}
+        --disable-db-install
+        --disable-pkg-ldflags
+        --disable-rpath-hack
+        --enable-pc-files
+        --without-ada
+        --without-debug # "lib model"
+        --without-manpages
+        --without-progs
+        --without-tack
+        --without-tests
+        --with-pkg-config-libdir=libdir
+)
+vcpkg_make_install()
 vcpkg_fixup_pkgconfig()
+
+# Prefer local files over search path
+file(GLOB headers "${CURRENT_PACKAGES_DIR}/include/ncursesw/*.h")
+foreach(file IN LISTS headers)
+    vcpkg_replace_string("${file}" [[#include <ncursesw/([^>]*)>]] [[#include "\1"]] REGEX IGNORE_UNCHANGED)
+endforeach()
+
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/ncurses/bin/ncursesw6-config"  "${CURRENT_INSTALLED_DIR}" "\${prefix}")
+vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/ncurses/bin/ncursesw6-config"  "\nprefix=\"\${prefix}\"" [=[prefix=$(CDPATH= cd -- "$(dirname -- "$0")"/../../.. && pwd -P)]=])
+if(NOT VCPKG_BUILD_TYPE)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/ncurses/debug/bin/ncursesw6-config"  "${CURRENT_INSTALLED_DIR}" "\${prefix}")
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/ncurses/debug/bin/ncursesw6-config"  "\nprefix=\"\${prefix}/debug\"" [=[prefix=$(CDPATH= cd -- "$(dirname -- "$0")"/../../../.. && pwd -P)/debug]=])
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/tools/ncurses/debug/bin/ncursesw6-config"  "\${prefix}/share" "\${prefix}/../share")
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/bin")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/COPYING")
+
+

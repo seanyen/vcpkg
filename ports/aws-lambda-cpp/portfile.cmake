@@ -1,20 +1,21 @@
-vcpkg_fail_port_install(ON_TARGET "Windows" "OSX")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO awslabs/aws-lambda-cpp
-    REF 8bcd8a201f9da613581a2748ca737ab09adbdae5 # v0.2.7
-    SHA512 c59310dd839622cfc9ac2a1df5a492e9a6d629b671ed929813dbe51dfe76d4a4e381e78b11b206b66c2bee131a1544c3c8dfc4644981b708b589492763c7ed59
+    REF "v${VERSION}"
+    SHA512 88d31c23b94f0ff4d08303f918482542fd54d188ee53cf42431fbb1054a754fc7d0ec82efb1f616da5b73412ec75e98df36c9bd6fa3cb203ffd252ec3ab5500f
     HEAD_REF master
 )
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        "-DAWS_LAMBDA_CPP_VERSION=${VERSION}"
+        -DCMAKE_DISABLE_FIND_PACKAGE_Backtrace=ON
 )
 
 vcpkg_cmake_install()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
 vcpkg_copy_pdbs()
 
@@ -25,4 +26,4 @@ file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/lib/aws-lambda-runtime")
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/lib/aws-lambda-runtime")
 
 # Handle copyright
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

@@ -1,15 +1,26 @@
-vcpkg_fail_port_install(ON_ARCH "arm" ON_TARGET "uwp")
+vcpkg_download_distfile(patch780
+    URLS "https://patch-diff.githubusercontent.com/raw/ithewei/libhv/pull/780.diff?full_index=1"
+    FILENAME "ithewei-libhv-780.diff"
+    SHA512 8915aec64d31cc94b54002d6a0b6b9f69908cde7a24b6036900b24cb8111d6ef8bbaddf707289e54b2c4e4c782cdca9c619adfd11233bf56571e805529d488e6
+)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ithewei/libhv
-    REF v1.2.2
-    SHA512 D0CB0BE3901E282E642FE454ADF0CAAF1840DD0CD340B6558E40270CF32608FF0773AAAD0BE1B9EA97BE5BD41B4CEB00FA92CDDA1590B71900A3D8EE4AB2358F
+    REF "v${VERSION}"
+    SHA512 5b1b1552b31331279030c5f6ea087ee9ca3bb3911938bc6ce14c90297151adeb6e30f413eea9591092783e0e745e78e6b6f957e4a26fe0e3c050fdad08d470ad
     HEAD_REF master
+    PATCHES
+        "${patch780}"
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" BUILD_STATIC)
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" BUILD_SHARED)
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        ssl WITH_OPENSSL
+)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
@@ -19,20 +30,13 @@ vcpkg_cmake_configure(
         -DBUILD_UNITTEST=OFF
         -DBUILD_STATIC=${BUILD_STATIC}
         -DBUILD_SHARED=${BUILD_SHARED}
+        ${FEATURE_OPTIONS}
 )
 
 vcpkg_cmake_install()
 
+vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/libhv)
+vcpkg_copy_pdbs()
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
-
-if(EXISTS "${CURRENT_PACKAGES_DIR}/lib/hv.dll")
-    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/bin")
-    file(RENAME "${CURRENT_PACKAGES_DIR}/lib/hv.dll" "${CURRENT_PACKAGES_DIR}/bin/hv.dll")
-endif()
-
-if(EXISTS "${CURRENT_PACKAGES_DIR}/debug/lib/hv.dll")
-    file(MAKE_DIRECTORY "${CURRENT_PACKAGES_DIR}/debug/bin")
-    file(RENAME "${CURRENT_PACKAGES_DIR}/debug/lib/hv.dll" "${CURRENT_PACKAGES_DIR}/debug/bin/hv.dll")
-endif()
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

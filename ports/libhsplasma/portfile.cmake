@@ -1,10 +1,10 @@
-vcpkg_fail_port_install(ON_ARCH "arm" ON_TARGET "uwp")
+string(REGEX REPLACE "-" "." REF_DOT_VERSION_DATE ${VERSION})
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO H-uru/libhsplasma
-    REF e435db76f86a0258ccd6f62a8bcd1f8b42d4f22d #2021.06.08
-    SHA512 ebd53633f22662793613c689b5a07f6149ed2b437c42a024e7c14a18d4411356edb11c95c08e1215dde443988fd1e4bcdd8d35fc30ca2545f507d6a61565cc69
+    REF "${REF_DOT_VERSION_DATE}"
+    SHA512 bf882347b8272a06335776454c339ccb36edcc4068978c2675700cf124f319eccc23a739427a3e2f57e1f27c3f4c5281db9ce5a914de78e97704f8b94af61d8e
     HEAD_REF master
 )
 
@@ -20,6 +20,10 @@ vcpkg_cmake_configure(
         -DENABLE_PHYSX=OFF
         -DENABLE_PYTHON=OFF
         -DENABLE_TOOLS=OFF
+
+        # Catch2 test discovery has some odd interactions with PATH, which
+        # appear to still be unresolved.  For simplicity, just skip tests.
+        -DENABLE_TESTS=OFF
 )
 
 vcpkg_cmake_install()
@@ -29,4 +33,5 @@ vcpkg_fixup_pkgconfig()
 vcpkg_copy_pdbs()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/share")
 file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)

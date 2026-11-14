@@ -1,19 +1,31 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libgit2/libgit2
-    REF v1.3.0
-    SHA512 842a648a67ff23ba9e6bf14b706ba9081164866e14000ebf3858442b7046925f05e1dbf00a7d740dc4bf32280e260730e23a9492e817094aa90736ae335ee76e
-    HEAD_REF master
+    REF "v${VERSION}"
+    SHA512 96924a4fd87669ad91d40669946cd249b646f3ce85380fc12b553b6c20338ff3c1df5faa6f168b2ca12ed20c8309116a05021f9710ee7ff61e5b8a249172b0ba
+    HEAD_REF main
     PATCHES
-        fix-configcmake.patch
+        c-standard.diff # for 'inline' in system headers
+        cli-include-dirs.diff
+        dependencies.diff
+        mingw-winhttp.diff
+        no-static-whole-program-optimization.diff # don't /GL a static lib; it forces /LTCG on consumers
 )
-
-file(REMOVE_RECURSE "${SOURCE_PATH}/cmake/FindPCRE.cmake")
+file(REMOVE_RECURSE
+    "${SOURCE_PATH}/cmake/FindPCRE.cmake"
+    "${SOURCE_PATH}/cmake/FindPCRE2.cmake"
+    "${SOURCE_PATH}/deps/chromium-zlib"
+    "${SOURCE_PATH}/deps/http-parser"
+    "${SOURCE_PATH}/deps/pcre"
+    "${SOURCE_PATH}/deps/winhttp"
+    "${SOURCE_PATH}/deps/zlib"
+)
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "static" STATIC_CRT)
 
 set(REGEX_BACKEND OFF)
 set(USE_HTTPS OFF)
+set(USE_SSH OFF)
 
 function(set_regex_backend VALUE)
     if(REGEX_BACKEND)
@@ -37,20 +49,16 @@ foreach(GIT2_FEATURE ${FEATURES})
     elseif(GIT2_FEATURE STREQUAL "openssl")
         set_tls_backend("OpenSSL")
     elseif(GIT2_FEATURE STREQUAL "winhttp")
-        if(NOT VCPKG_TARGET_IS_WINDOWS)
-            message(FATAL_ERROR "winhttp is not supported on non-Windows and uwp platforms")
-        endif()
         set_tls_backend("WinHTTP")
     elseif(GIT2_FEATURE STREQUAL "sectransp")
-        if(NOT VCPKG_TARGET_IS_OSX)
-            message(FATAL_ERROR "sectransp is not supported on non-Apple platforms")
-        endif()
         set_tls_backend("SecureTransport")
     elseif(GIT2_FEATURE STREQUAL "mbedtls")
-        if(VCPKG_TARGET_IS_WINDOWS)
-            message(FATAL_ERROR "mbedtls is not supported on Windows because a certificate file must be specified at compile time")
-        endif()
         set_tls_backend("mbedTLS")
+    elseif(GIT2_FEATURE STREQUAL "ssh")
+        set(USE_SSH ON)
+        message(STATUS "This version of `libgit2` uses the default (`libssh2`) backend. To use the newer backend which utilizes the `ssh` CLI from a local install of OpenSSH instead, create an overlay port of this with USE_SSH set to 'exec' and the `libssh2` dependency removed.")
+        message(STATUS "This recipe is at ${CMAKE_CURRENT_LIST_DIR}")
+        message(STATUS "See the overlay ports documentation at https://learn.microsoft.com/vcpkg/concepts/overlay-ports")
     endif()
 endforeach()
 
@@ -58,27 +66,54 @@ if(NOT REGEX_BACKEND)
     message(FATAL_ERROR "Must choose pcre or pcre2 regex backend")
 endif()
 
+vcpkg_find_acquire_program(PKGCONFIG)
+
 vcpkg_check_features(
     OUT_FEATURE_OPTIONS GIT2_FEATURES
     FEATURES
-        ssh USE_SSH
+        tools   BUILD_CLI
+        sha256  EXPERIMENTAL_SHA256
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DBUILD_CLAR=OFF
+        -DBUILD_TESTS=OFF
         -DUSE_HTTP_PARSER=system
         -DUSE_HTTPS=${USE_HTTPS}
         -DREGEX_BACKEND=${REGEX_BACKEND}
+        -DUSE_SSH=${USE_SSH}
         -DSTATIC_CRT=${STATIC_CRT}
+        "-DPKG_CONFIG_EXECUTABLE=${PKGCONFIG}"
+        -DCMAKE_DISABLE_FIND_PACKAGE_GSSAPI:BOOL=ON
         ${GIT2_FEATURES}
+    OPTIONS_DEBUG
+        -DBUILD_CLI=OFF
+    MAYBE_UNUSED_VARIABLES
+        STATIC_CRT
 )
 
 vcpkg_cmake_install()
-vcpkg_cmake_config_fixup(PACKAGE_NAME unofficial-git2 CONFIG_PATH share/unofficial-git2)
 vcpkg_fixup_pkgconfig()
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
+
+if("tools" IN_LIST FEATURES)
+    # Since SHA256 is considered an "experimental" feature, it renames the executable. This renames it back.
+    if("sha256" IN_LIST FEATURES)
+        file(RENAME "${CURRENT_PACKAGES_DIR}/bin/git2-experimental${VCPKG_TARGET_EXECUTABLE_SUFFIX}" "${CURRENT_PACKAGES_DIR}/bin/git2${VCPKG_TARGET_EXECUTABLE_SUFFIX}")
+    endif()
+
+    vcpkg_copy_tools(TOOL_NAMES git2 AUTO_CLEAN)
+endif()
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL "${SOURCE_PATH}/COPYING" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+set(file_list "${SOURCE_PATH}/COPYING")
+if(NOT VCPKG_TARGET_IS_WINDOWS)
+    file(WRITE "${CURRENT_BUILDTREES_DIR}/Notice for ntlmclient" [[
+Copyright (c) Edward Thomson.  All rights reserved.
+These source files are part of ntlmclient, distributed under the MIT license.
+]])
+    list(APPEND file_list "${CURRENT_BUILDTREES_DIR}/Notice for ntlmclient")
+endif()
+vcpkg_install_copyright(FILE_LIST ${file_list})

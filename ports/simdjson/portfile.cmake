@@ -1,9 +1,9 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO simdjson/simdjson
-    REF v1.0.2
+    REF "v${VERSION}"
     HEAD_REF master
-    SHA512 04a3bee2d847680aa1f55115007ceec01652bebb8d5187cfbca0af81bedff355cbac949862a82e3060071da1a58b62d5b028bcd91562b962756aa5cab614f073
+    SHA512 e76fe4302be3e3646167d0ecffa2b5b8231cd38f4aadbe4ba958daa7e627f53ea36eac610e2d33d2a048ebd4ff08d13518bd281aa173bcb4983aabc76fb529a3
 )
 
 vcpkg_check_features(
@@ -13,18 +13,16 @@ vcpkg_check_features(
         threads    SIMDJSON_ENABLE_THREADS
     INVERTED_FEATURES
         deprecated SIMDJSON_DISABLE_DEPRECATED_API
+        utf8-validation SIMDJSON_SKIPUTF8VALIDATION
 )
-
-string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" SIMDJSON_BUILD_STATIC)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
-        -DSIMDJSON_JUST_LIBRARY=ON
+        -DSIMDJSON_DEVELOPER_MODE=OFF
         -DSIMDJSON_SANITIZE_UNDEFINED=OFF
         -DSIMDJSON_SANITIZE=OFF
         -DSIMDJSON_SANITIZE_THREADS=OFF
-        -DSIMDJSON_BUILD_STATIC=${SIMDJSON_BUILD_STATIC}
         -DSIMDJSON_DEVELOPMENT_CHECKS=OFF
         -DSIMDJSON_VERBOSE_LOGGING=OFF
         ${FEATURE_OPTIONS}
@@ -32,10 +30,29 @@ vcpkg_cmake_configure(
 
 vcpkg_cmake_install()
 
+if(VCPKG_TARGET_IS_WINDOWS AND VCPKG_LIBRARY_LINKAGE STREQUAL "dynamic")
+    set(SIMDJSON_HEADER "${CURRENT_PACKAGES_DIR}/include/simdjson.h")
+    file(READ "${SIMDJSON_HEADER}" SIMDJSON_HEADER_CONTENTS)
+    file(WRITE "${SIMDJSON_HEADER}"
+        "#ifndef SIMDJSON_USING_WINDOWS_DYNAMIC_LIBRARY\n"
+        "#define SIMDJSON_USING_WINDOWS_DYNAMIC_LIBRARY 1\n"
+        "#endif\n"
+        "${SIMDJSON_HEADER_CONTENTS}"
+    )
+endif()
+
 vcpkg_copy_pdbs()
 
 vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
 
+vcpkg_fixup_pkgconfig()
+
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
-file(INSTALL "${SOURCE_PATH}/LICENSE" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}" RENAME copyright)
+vcpkg_install_copyright(
+    FILE_LIST
+        "${SOURCE_PATH}/LICENSE"
+        "${SOURCE_PATH}/LICENSE-MIT"
+        "${SOURCE_PATH}/include/simdjson/nonstd/string_view.hpp"
+        "${SOURCE_PATH}/include/simdjson/internal/instruction_set.h"
+)

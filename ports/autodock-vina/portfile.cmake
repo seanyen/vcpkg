@@ -3,8 +3,8 @@ vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ccsb-scripps/AutoDock-Vina
-    REF v1.2.3
-    SHA512 ea3d3008553665af5fbafa3b4dfe379df257d9c5b957d81a91ec8b92f06a8d0f4c2dfc30b515a64c0bc6dcc70acedfdd498c3bb9a21cac58e43d4da37d2ff606
+    REF "v${VERSION}"
+    SHA512 b96d2f14bf26b63b3f132750e7b056632d8e48649ce24e267972e698d60b834c9dcd93907b22bd27413843a34112d6db32acef1793b8b2a5a14e813c66548633
     HEAD_REF develop
 )
 

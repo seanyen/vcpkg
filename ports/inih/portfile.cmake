@@ -3,20 +3,33 @@ vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO benhoyt/inih
-    REF d7f465792c0c7686b50ed45c9a435394ae418d3e # r51
-    SHA512 f3b621225933d74e9b130957aab1d55a82f06fd836aace439f9192a393d82a446e9f2152bb617a73a1dc681a821fc31d217c41f38c8ef8eeef7ad64c3e274b5d
+    REF "r${VERSION}"
+    SHA512 0aede2f2dbb70e6ee855743045d423a0f399c6361f84813be5b912ca84b4dfe40013857b91390d9b156f8bc53067582ea66e6c7de339f4b0fb7436b10143a059
     HEAD_REF master
 )
 
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
-
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_check_features(
+    OUT_FEATURE_OPTIONS FEATURE_OPTIONS
+    FEATURES
+        cpp with_INIReader
 )
 
-vcpkg_install_cmake()
+string(REPLACE "OFF" "false" FEATURE_OPTIONS "${FEATURE_OPTIONS}")
+string(REPLACE "ON" "true" FEATURE_OPTIONS "${FEATURE_OPTIONS}")
 
-file(INSTALL ${SOURCE_PATH}/LICENSE.txt DESTINATION ${CURRENT_PACKAGES_DIR}/share/inih RENAME copyright)
+vcpkg_configure_meson(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ${FEATURE_OPTIONS}
+        "-Dcpp_std=c++11"
+)
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+vcpkg_install_meson()
+vcpkg_copy_pdbs()
+vcpkg_fixup_pkgconfig()
+
+string(COMPARE EQUAL "${VCPKG_BUILD_TYPE}" "" INIH_CONFIG_DEBUG)
+configure_file("${CURRENT_PORT_DIR}/unofficial-inihConfig.cmake.in" "${CURRENT_PACKAGES_DIR}/share/unofficial-inih/unofficial-inihConfig.cmake" @ONLY)
+
+file(COPY "${CURRENT_PORT_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE.txt")

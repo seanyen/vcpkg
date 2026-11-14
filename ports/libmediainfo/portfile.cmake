@@ -1,30 +1,48 @@
+string(REGEX REPLACE "^([0-9]+)[.]([1-9])\$" "\\1.0\\2" MEDIAINFO_VERSION "${VERSION}")
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO MediaArea/MediaInfoLib
-    REF d5fb067e1539aa7a74c491e8262c81214f9c8bcb #v21.03
-    SHA512 6d49c8187dca264b4d9fb1f93a82cb65435e81a2540cfb84f885d53737560f7e8e60c8209e7d184cb191f298495db90ffb3185481e3ed44bf5a1f5131f671d89
+    REF "v${MEDIAINFO_VERSION}"
+    SHA512 861175390962c29e8cc2df6b3bae322db70b6fd068c79b232faf5c2119770ccbdf208abe07e16e69b95340d32bf406058a913d3a4ed986e6bb867b27dc31c8e0
     HEAD_REF master
-    PATCHES vcpkg_support_in_cmakelists.patch
+    PATCHES
+        dependencies.diff
+)
+file(REMOVE_RECURSE "${SOURCE_PATH}/Source/ThirdParty/tinyxml2")
+
+vcpkg_find_acquire_program(PKGCONFIG)
+set(ENV{PKG_CONFIG} "${PKGCONFIG}")
+
+vcpkg_check_features(OUT_FEATURE_OPTIONS options
+    FEATURES
+        curl    VCPKG_LOCK_FIND_PACKAGE_CURL
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}/Project/CMake"
     OPTIONS
+        ${options}
         -DBUILD_ZENLIB=0
         -DBUILD_ZLIB=0
+        -DCMAKE_REQUIRE_FIND_PACKAGE_PkgConfig=1
 )
-
 vcpkg_cmake_install()
-
-if(EXISTS "${CURRENT_PACKAGES_DIR}/share/mediainfolib")
-    file(RENAME "${CURRENT_PACKAGES_DIR}/share/mediainfolib" "${CURRENT_PACKAGES_DIR}/share/MediaInfoLib")
+vcpkg_cmake_config_fixup(PACKAGE_NAME mediainfolib)
+vcpkg_fixup_pkgconfig()
+if(NOT VCPKG_BUILD_TYPE AND VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_replace_string("${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libmediainfo.pc" " -lmediainfo" " -lmediainfod")
 endif()
 
-if(EXISTS "${CURRENT_PACKAGES_DIR}/debug/share/mediainfolib")
-    file(RENAME "${CURRENT_PACKAGES_DIR}/debug/share/mediainfolib" "${CURRENT_PACKAGES_DIR}/debug/share/MediaInfoLib")
-endif()
-vcpkg_cmake_config_fixup(PACKAGE_NAME MediaInfoLib CONFIG_PATH share/MediaInfoLib)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/LICENSE"
+    "${SOURCE_PATH}/Source/ThirdParty/aes-gladman/aes.h"
+    "${SOURCE_PATH}/Source/ThirdParty/sha1-gladman/sha1.h"
+    "${SOURCE_PATH}/Source/ThirdParty/sha2-gladman/sha2.h"
+    "${SOURCE_PATH}/Source/ThirdParty/hmac-gladman/hmac.h"
+    "${SOURCE_PATH}/Source/ThirdParty/md5/md5.c"
+    "${SOURCE_PATH}/Source/ThirdParty/tfsxml/tfsxml.h"
+    "${SOURCE_PATH}/Source/ThirdParty/fmt/format.h"
+    "${SOURCE_PATH}/Source/ThirdParty/base64/base64.h"
+)

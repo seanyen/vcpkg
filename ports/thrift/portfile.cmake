@@ -2,19 +2,25 @@
 # - Thrift doesn't yet support building as a DLL on Windows,
 # - x64-linux only builds static anyway.
 # From https://github.com/apache/thrift/blob/master/CHANGES.md
-vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+if(VCPKG_TARGET_IS_WINDOWS)
+    vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+endif()
 
 vcpkg_find_acquire_program(FLEX)
 vcpkg_find_acquire_program(BISON)
 
-vcpkg_from_github(
-    OUT_SOURCE_PATH SOURCE_PATH
-    REPO apache/thrift
-    REF cecee50308fc7e6f77f55b3fd906c1c6c471fa2f #0.13.0
-    SHA512 4097fd7951a4d47f2fadc520a54fd1b91b10769d65e899c6bab490dd7ac459e12bb2aa335df8fdfc61a32095033bfac928a54660abb1ee54ca14a144216c3339
-    HEAD_REF master
+vcpkg_download_distfile(ARCHIVE
+    URLS "https://archive.apache.org/dist/thrift/${VERSION}/thrift-${VERSION}.tar.gz"
+    FILENAME "thrift-${VERSION}.tar.gz"
+    SHA512 0570486bd6e4aa95a2eb329ad01a867a7999f7a936248e8fa3312a2dd20e247b7677d58f84a8e05e82de6bbb09647da2fe0e6aa720e825468e9f9b479831e76a
+)
+
+vcpkg_extract_source_archive(
+    SOURCE_PATH
+    ARCHIVE "${ARCHIVE}"
     PATCHES
-      "correct-paths.patch"
+        pc-suffix.patch
+        fix_missing_quotes_in_config_and_bin_path.patch
 )
 
 if (VCPKG_TARGET_IS_OSX)
@@ -22,53 +28,71 @@ if (VCPKG_TARGET_IS_OSX)
 please use command \`brew install bison\` to install bison")
 endif()
 
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "dynamic" shared_lib)
+string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" static_lib)
+
 # note we specify values for WITH_STATIC_LIB and WITH_SHARED_LIB because even though
 # they're marked as deprecated, Thrift incorrectly hard-codes a value for BUILD_SHARED_LIBS.
-vcpkg_configure_cmake(
-    SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
+vcpkg_cmake_configure(
+    SOURCE_PATH "${SOURCE_PATH}"
     NO_CHARSET_FLAG
     OPTIONS
-        -DWITH_SHARED_LIB=off
-        -DWITH_STATIC_LIB=on
-        -DWITH_STDTHREADS=ON
-        -DBUILD_TESTING=off
-        -DBUILD_JAVA=off
-        -DBUILD_C_GLIB=off
-        -DBUILD_PYTHON=off
-        -DBUILD_CPP=on
-        -DBUILD_HASKELL=off
-        -DBUILD_TUTORIALS=off
+        --trace-expand
+        -DLIB_INSTALL_DIR:PATH=lib
+        -DWITH_SHARED_LIB=${shared_lib}
+        -DWITH_STATIC_LIB=${static_lib}
+        -DBUILD_TESTING=OFF
+        -DBUILD_JAVA=OFF
+        -DWITH_C_GLIB=OFF
+        -DBUILD_C_GLIB=OFF
+        -DCMAKE_DISABLE_FIND_PACKAGE_GLIB=TRUE
+        -DBUILD_PYTHON=OFF
+        -DBUILD_CPP=ON
+        -DWITH_CPP=ON
+        -DWITH_ZLIB=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_ZLIB=TRUE
+        -DWITH_LIBEVENT=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_Libevent=TRUE
+        -DWITH_OPENSSL=ON
+        -DCMAKE_REQUIRE_FIND_PACKAGE_OpenSSL=TRUE
+        -DBUILD_TUTORIALS=OFF
         -DFLEX_EXECUTABLE=${FLEX}
+        -DWITH_QT5=OFF
         -DCMAKE_DISABLE_FIND_PACKAGE_Qt5=TRUE
+        -DCMAKE_DISABLE_FIND_PACKAGE_Gradle=TRUE
+        -DCMAKE_DISABLE_FIND_PACKAGE_Java=TRUE
+        -DBUILD_JAVASCRIPT=OFF
+        -DBUILD_NODEJS=OFF
         -DBISON_EXECUTABLE=${BISON}
+    MAYBE_UNUSED_VARIABLES
+        CMAKE_DISABLE_FIND_PACKAGE_GLIB
+        CMAKE_DISABLE_FIND_PACKAGE_Gradle
+        CMAKE_REQUIRE_FIND_PACKAGE_Libevent
+        CMAKE_REQUIRE_FIND_PACKAGE_OpenSSL
+        CMAKE_REQUIRE_FIND_PACKAGE_ZLIB
 )
 
-vcpkg_install_cmake()
+vcpkg_cmake_install()
 
 vcpkg_copy_pdbs()
 
 # Move CMake config files to the right place
-vcpkg_fixup_cmake_targets(CONFIG_PATH lib/cmake/thrift)
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
+vcpkg_fixup_pkgconfig()
 
 file(GLOB COMPILER "${CURRENT_PACKAGES_DIR}/bin/thrift" "${CURRENT_PACKAGES_DIR}/bin/thrift.exe")
 if(COMPILER)
-    file(COPY ${COMPILER} DESTINATION ${CURRENT_PACKAGES_DIR}/tools/thrift)
-    file(REMOVE ${COMPILER})
-    vcpkg_copy_tool_dependencies(${CURRENT_PACKAGES_DIR}/tools/thrift)
+    vcpkg_copy_tools(TOOL_NAMES thrift AUTO_CLEAN)
 endif()
 
-file(GLOB COMPILERD "${CURRENT_PACKAGES_DIR}/debug/bin/thrift" "${CURRENT_PACKAGES_DIR}/debug/bin/thrift.exe")
-if(COMPILERD)
-    file(REMOVE ${COMPILERD})
-endif()
-
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include" "${CURRENT_PACKAGES_DIR}/debug/share")
 
 if ("${VCPKG_LIBRARY_LINKAGE}" STREQUAL "static")
-    file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/bin)
-    file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/bin)
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/bin")
+    file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/bin")
 endif()
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
-vcpkg_fixup_pkgconfig()
+vcpkg_install_copyright(FILE_LIST
+    "${SOURCE_PATH}/LICENSE"
+    "${SOURCE_PATH}/NOTICE"
+)

@@ -3,26 +3,18 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO boostorg/locale
-    REF boost-1.77.0
-    SHA512 363bf4bc970fb044fc1739405ced27fee00fb2d5925263069f29821204c505ba4e4dac344a27232c8d7e96cd09d90342623ba5d93112277f21cf08ef5bbfd0ff
+    REF boost-${VERSION}
+    SHA512 8323b1fce0695e05abb3df04eabde421ceb3315af38e37d6c37aabdb6b4b136caff04944afe827a46f2d0d46f3c9312aba0596e59d2065dd7b61a090b61768d4
     HEAD_REF master
-    PATCHES
-        0001-Fix-boost-ICU-support.patch
-        allow-force-finding-iconv.patch
 )
 
-if(NOT DEFINED CURRENT_HOST_INSTALLED_DIR)
-    message(FATAL_ERROR "boost-locale requires a newer version of vcpkg in order to build.")
+set(FEATURE_OPTIONS "")
+include("${CMAKE_CURRENT_LIST_DIR}/features.cmake")
+if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux" AND VCPKG_TARGET_IS_MINGW)
+    # mingw cross compile toolchain lacks std conv support
+    list(APPEND FEATURE_OPTIONS "-DBOOST_LOCALE_ENABLE_STD=OFF")
 endif()
-include(${CURRENT_HOST_INSTALLED_DIR}/share/boost-build/boost-modular-build.cmake)
-configure_file(
-    "${CMAKE_CURRENT_LIST_DIR}/b2-options.cmake.in"
-    "${CURRENT_BUILDTREES_DIR}/vcpkg-b2-options.cmake"
-    @ONLY
+boost_configure_and_install(
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS ${FEATURE_OPTIONS}
 )
-boost_modular_build(
-    SOURCE_PATH ${SOURCE_PATH}
-    BOOST_CMAKE_FRAGMENT "${CURRENT_BUILDTREES_DIR}/vcpkg-b2-options.cmake"
-)
-include(${CURRENT_INSTALLED_DIR}/share/boost-vcpkg-helpers/boost-modular-headers.cmake)
-boost_modular_headers(SOURCE_PATH ${SOURCE_PATH})

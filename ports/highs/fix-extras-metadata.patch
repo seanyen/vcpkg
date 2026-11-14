@@ -1,0 +1,18 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index a656a0c50f..4d8357b735 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -692,6 +692,13 @@ if(NOT BUILD_SHARED_LIBS)
+       set(HIGHS_PC_REQUIRES_PRIVATE "zlib")
+     endif()
+   endif()
++  if(FAST_BUILD AND HIPO AND NOT BUILD_SHARED_EXTRAS_LIB)
++    if(HIGHS_PC_REQUIRES_PRIVATE)
++      string(APPEND HIGHS_PC_REQUIRES_PRIVATE ", blas")
++    else()
++      set(HIGHS_PC_REQUIRES_PRIVATE "blas")
++    endif()
++  endif()
+ endif()
+ 
+ if (NOT CMAKE_INSTALL_DOCDIR STREQUAL "" AND BUILD_CXX)

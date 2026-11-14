@@ -1,25 +1,31 @@
-vcpkg_fail_port_install(ON_TARGET "UWP")
 vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
 
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO uber/h3
-    REF 26a6409156ba8539b2b332f799486572f1f8bab2 #v3.6.3
-    SHA512 ee3450a5720951254fcdd9bb3acc4b33ed4a58c214e1ed8a091791674b57f0a48de76f0483b31b0b2ad9c316af6a5fcb0c3b72428b8f6380d6b6f717aaed73d7
+    REF "v${VERSION}"
+    SHA512 8b74989632e2f23ecd26098d1accf6289ab0aac025ed695eafc0919e450090f935990518d26cb5b2f01df180e60f1bf3896607bc39771808b63ffc87a18921e4
     HEAD_REF master
 )
 
 vcpkg_cmake_configure(
-    SOURCE_PATH ${SOURCE_PATH}
+    SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DBUILD_BENCHMARKS=OFF
+        -DBUILD_FUZZERS=OFF
         -DBUILD_FILTERS=OFF
         -DBUILD_GENERATORS=OFF
+        -DBUILD_TESTING=OFF
+
+        -DENABLE_DOCS=OFF
+        -DENABLE_FORMAT=OFF
+        -DENABLE_LINTING=OFF
 )
 
 vcpkg_cmake_install()
 
-vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/${PORT})
+vcpkg_cmake_config_fixup(CONFIG_PATH "lib/cmake/${PORT}")
+vcpkg_fixup_pkgconfig()
 
 vcpkg_copy_pdbs()
 

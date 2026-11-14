@@ -1,20 +1,17 @@
 vcpkg_from_github(
-  OUT_SOURCE_PATH SOURCE_PATH
-  REPO OpenMPT/openmpt
-  REF 7da598b28acdb8ee8ea0ed93bcb57d680424f5cc # libopenmpt-0.5.12
-  SHA512 0f5441518dbbbbae194c724c47238a3cad876d8eb81e6a89fed3801724a6ae023d6d8806f792dc2f44082f3849cd4e1130081db3668f9974170171227f70e879
-  HEAD_REF master
+    OUT_SOURCE_PATH SOURCE_PATH
+    REPO OpenMPT/openmpt
+    REF "libopenmpt-${VERSION}"
+    SHA512 f9a0398f607349c55abf91bc22ea52c4e200c8c9e95c11d0ac0eb8c7f5b46c4885b65acc3d7e639c9d828fd0d9d84b5a51f8a010a995f8ef593d93c33a9b3b10
+    HEAD_REF master
 )
 
-file(READ ${CMAKE_CURRENT_LIST_DIR}/vcpkg.json vcpkg_json)
-string(JSON version GET "${vcpkg_json}" "version")
-
-file(COPY ${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt DESTINATION ${SOURCE_PATH})
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
 
 vcpkg_cmake_configure(
-  SOURCE_PATH ${SOURCE_PATH}
-  OPTIONS
-    -DVERSION=${version}
+    SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        "-DVERSION=${VERSION}"
 )
 vcpkg_cmake_install()
 vcpkg_cmake_config_fixup()
@@ -27,5 +24,5 @@ else()
     vcpkg_replace_string(${CURRENT_PACKAGES_DIR}/include/libopenmpt/libopenmpt_config.h "defined(LIBOPENMPT_USE_DLL)" "1")
 endif()
 
-file(REMOVE_RECURSE ${CURRENT_PACKAGES_DIR}/debug/include)
-configure_file(${SOURCE_PATH}/LICENSE ${CURRENT_PACKAGES_DIR}/share/${PORT}/copyright COPYONLY)
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")

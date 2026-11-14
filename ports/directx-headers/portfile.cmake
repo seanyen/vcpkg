@@ -1,22 +1,21 @@
-vcpkg_fail_port_install(ON_TARGET "OSX")
-
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO Microsoft/DirectX-Headers
-    REF v1.4.9
-    SHA512 439d28a8344ef3a012428f53fcb9d2d9823d51c61786363d87f8ba15921326c220478b2557aab3f641a2406f1e5f299a8e21a82547febff3b9cd7b26b09b1c22
-    HEAD_REF master
+    REF v${VERSION}
+    SHA512 4ed51ee0efe65f9e27eb4ef22af934163d6fcb6d674dc56dcddc6e7b941acf1d3292332034f379179fe80e59cde94b9fceea36533d268e7df49d3656971254ef
+    HEAD_REF main
 )
 
-vcpkg_configure_cmake(
+vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
-    PREFER_NINJA
-    OPTIONS -DDXHEADERS_BUILD_TEST=OFF
+    OPTIONS -DDXHEADERS_INSTALL=ON -DDXHEADERS_BUILD_TEST=OFF -DDXHEADERS_BUILD_GOOGLE_TEST=OFF
 )
 
-vcpkg_install_cmake()
-vcpkg_fixup_cmake_targets(CONFIG_PATH share/directx-headers/cmake)
+vcpkg_cmake_install()
+vcpkg_fixup_pkgconfig()
+vcpkg_cmake_config_fixup(CONFIG_PATH share/directx-headers/cmake)
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 
-file(INSTALL ${SOURCE_PATH}/LICENSE DESTINATION ${CURRENT_PACKAGES_DIR}/share/${PORT} RENAME copyright)
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/LICENSE")
